@@ -486,24 +486,27 @@ async function verifyKey() {
   btn.innerHTML = spin + ' Checking server...';
   btn.disabled = true;
 
-  // Step 1: ping to confirm server is reachable (Railway may cold-start in 15-25s)
+  // Step 1: ping — Railway cold starts can take 30-60s on free tier
   let serverUp = false;
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  const MAX_PING_ATTEMPTS = 8;
+  for (let attempt = 1; attempt <= MAX_PING_ATTEMPTS; attempt++) {
     try {
       serverUp = await pingServer();
       if (serverUp) break;
     } catch(e) {
-      if (attempt < 4) {
-        showVerifyResult(false, `Server waking up — attempt ${attempt}/4 (this can take up to 30s on first load)...`);
-        await new Promise(r => setTimeout(r, 7000));
-        btn.innerHTML = spin + ` Retrying (${attempt}/4)...`;
-      }
+      // non-ok or timeout — keep waiting
+    }
+    if (!serverUp && attempt < MAX_PING_ATTEMPTS) {
+      const elapsed = attempt * 12; // ~12s per attempt
+      showVerifyResult(false, `⏳ Server is starting up (${elapsed}s elapsed, up to ~60s on first use)...`);
+      btn.innerHTML = spin + ` Waiting for server (${attempt}/${MAX_PING_ATTEMPTS})...`;
+      await new Promise(r => setTimeout(r, 8000));
     }
   }
 
   if (!serverUp) {
-    showVerifyResult(false, '⚠ Backend is offline. Go to your <a href="https://railway.app/dashboard" target="_blank" class="underline font-bold">Railway dashboard</a> and make sure the service is running, then try again.');
-    document.getElementById('verify-result').innerHTML = document.getElementById('verify-result').innerHTML; // re-parse links
+    showVerifyResult(false, '⚠ Server did not respond after 90s. Open your <a href="https://railway.app/dashboard" target="_blank" class="underline font-bold">Railway dashboard</a>, check the service is deployed and running, then try again.');
+    document.getElementById('verify-result').innerHTML = document.getElementById('verify-result').innerHTML;
     btn.innerHTML = checkIcon + ' Verify Key';
     btn.disabled = false;
     return;
