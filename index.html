@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SEO Lead Finder</title>
+<title>Zaram SEO PitchReady</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
 
 <nav class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
   <div>
-    <span class="font-bold text-lg text-blue-600">SEO Lead Finder</span>
+    <span class="font-bold text-lg text-blue-600">Zaram SEO PitchReady</span>
     <span class="ml-2 text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">Beta</span>
   </div>
-  <span class="text-sm text-gray-400">Real audits · Real contacts · Real pitches</span>
+  <span class="text-sm text-gray-400">Real audits &middot; Real contacts &middot; Real pitches</span>
 </nav>
 
 <div class="max-w-5xl mx-auto px-6 py-10">
@@ -21,7 +21,7 @@
   <!-- Search -->
   <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 shadow-sm">
     <h2 class="font-bold text-gray-800 text-lg mb-1">Find Weak Websites to Pitch</h2>
-    <p class="text-sm text-gray-400 mb-5">Search Google pages 3–10 — businesses that are trying but failing to rank. Every result gets a real SEO audit, contact info extracted, and a personalised pitch written by AI.</p>
+    <p class="text-sm text-gray-400 mb-5">Search Google pages 3-10 -- businesses that are trying but failing to rank. Every result gets a real SEO audit, contact info extracted, and a personalised pitch written by AI.</p>
 
     <div class="flex gap-3 mb-4">
       <input id="query" type="text" placeholder='e.g. solar installation company in Los Angeles'
@@ -50,12 +50,12 @@
       <div class="flex items-end">
         <button id="search-btn" onclick="startSearch()"
           class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-2.5 rounded-lg text-sm transition">
-          Find Leads →
+          Find Leads &rarr;
         </button>
       </div>
     </div>
 
-    <p class="text-xs text-gray-400">Each page has ~10 results. Pages 3–10 = up to 80 sites audited. Takes 5–15 min depending on site speed.</p>
+    <p class="text-xs text-gray-400">Each page has ~10 results. Pages 3-10 = up to 80 sites audited. Takes 5-15 min depending on site speed.</p>
   </div>
 
   <!-- Progress -->
@@ -89,7 +89,7 @@
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4">
       <div class="text-xs text-gray-400 mb-1">Avg SEO score</div>
-      <div class="text-2xl font-bold text-orange-500" id="stat-seo">—</div>
+      <div class="text-2xl font-bold text-orange-500" id="stat-seo">--</div>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4">
       <div class="text-xs text-gray-400 mb-1">Emails found</div>
@@ -105,7 +105,7 @@
   <div id="download-bar" class="hidden bg-white rounded-xl border border-gray-200 p-4 mb-6 flex items-center justify-between">
     <span class="text-sm text-gray-600" id="download-label"></span>
     <button onclick="downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition">
-      ⬇ Download CSV
+      Download CSV
     </button>
   </div>
 
@@ -146,16 +146,16 @@ async function startSearch() {
   document.getElementById('download-bar').classList.add('hidden');
   document.getElementById('results-section').innerHTML = '';
   document.getElementById('live-log').innerHTML = '';
-  document.getElementById('progress-title').textContent = `Searching: "${query}"`;
-  document.getElementById('progress-sub').textContent = `Google pages ${startPage}–${endPage}`;
+  document.getElementById('progress-title').textContent = 'Searching: "' + query + '"';
+  document.getElementById('progress-sub').textContent = 'Google pages ' + startPage + ' to ' + endPage;
   document.getElementById('progress-badge').textContent = 'Running';
   document.getElementById('progress-badge').className = 'text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-700';
   document.getElementById('stop-btn').classList.remove('hidden');
 
-  addLog(`[${now()}] Starting search: "${query}" — pages ${startPage}–${endPage}`);
+  addLog('[' + now() + '] Starting search: "' + query + '" -- pages ' + startPage + ' to ' + endPage);
 
   try {
-    const resp = await fetch(`${API}/search`, {
+    const resp = await fetch(API + '/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, startPage, endPage })
@@ -164,24 +164,22 @@ async function startSearch() {
     currentJobId = data.jobId;
     pollTimer = setInterval(() => pollJob(), 4000);
   } catch (e) {
-    addLog(`[ERROR] Cannot connect to backend. Make sure the server is running on port 3002.`);
-    addLog(`Run: cd seo-finder/backend && npm install && npm start`);
+    addLog('[ERROR] Cannot connect to backend.');
     document.getElementById('search-btn').disabled = false;
+    document.getElementById('stop-btn').classList.add('hidden');
   }
 }
 
 async function pollJob() {
   if (!currentJobId) return;
   try {
-    const resp = await fetch(`${API}/job/${currentJobId}`);
+    const resp = await fetch(API + '/job/' + currentJobId);
     const job = await resp.json();
 
-    // Update logs
     job.logs.forEach(l => {
       if (!document.getElementById('live-log').textContent.includes(l)) addLog(l);
     });
 
-    // Update stats
     document.getElementById('stat-found').textContent = job.totalFound || 0;
     document.getElementById('stat-leads').textContent = job.leadsReady || 0;
 
@@ -190,11 +188,9 @@ async function pollJob() {
       const avgSeo = Math.round(job.leads.reduce((s, l) => s + l.seoScore, 0) / job.leads.length);
       document.getElementById('stat-emails').textContent = emails;
       document.getElementById('stat-seo').textContent = avgSeo + '/100';
-
       const pct = job.totalFound ? Math.round((job.leadsReady / job.totalFound) * 100) : 0;
       document.getElementById('progress-bar').style.width = pct + '%';
-      document.getElementById('progress-count').textContent = `${job.leadsReady} / ${job.totalFound} audited`;
-
+      document.getElementById('progress-count').textContent = job.leadsReady + ' / ' + job.totalFound + ' audited';
       renderLeads(job.leads);
     }
 
@@ -204,15 +200,14 @@ async function pollJob() {
       document.getElementById('stop-btn').classList.add('hidden');
       document.getElementById('progress-bar').style.width = '100%';
       document.getElementById('progress-badge').textContent = job.status === 'done' ? 'Done' : 'Error';
-      document.getElementById('progress-badge').className = `text-xs font-semibold px-3 py-1 rounded-full ${job.status === 'done' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-
+      document.getElementById('progress-badge').className = 'text-xs font-semibold px-3 py-1 rounded-full ' + (job.status === 'done' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700');
       if (job.leads && job.leads.length) {
         document.getElementById('download-bar').classList.remove('hidden');
-        document.getElementById('download-label').textContent = `${job.leads.length} leads ready — with SEO scores, contacts, and AI pitches`;
+        document.getElementById('download-label').textContent = job.leads.length + ' leads ready -- with SEO scores, contacts, and AI pitches';
       }
     }
   } catch (e) {
-    addLog(`[WARN] Poll error — retrying...`);
+    addLog('[WARN] Poll error -- retrying...');
   }
 }
 
@@ -221,69 +216,50 @@ function renderLeads(leads) {
   container.innerHTML = '';
   leads.forEach((l, idx) => {
     const issueHtml = l.issues.slice(0, 5).map(i =>
-      `<span class="inline-block bg-red-50 text-red-600 text-xs px-2 py-0.5 rounded mr-1 mb-1">${i}</span>`
+      '<span class="inline-block bg-red-50 text-red-600 text-xs px-2 py-0.5 rounded mr-1 mb-1">' + i + '</span>'
     ).join('');
 
     const emailHtml = l.emails.length
-      ? l.emails.map(e => `<a href="mailto:${e}" class="text-blue-600 hover:underline">${e}</a>`).join(', ')
+      ? l.emails.map(e => '<a href="mailto:' + e + '" class="text-blue-600 hover:underline">' + e + '</a>').join(', ')
       : '<span class="text-gray-400">Not found</span>';
 
-    const phoneHtml = l.phones.length
-      ? l.phones[0]
-      : '<span class="text-gray-400">Not found</span>';
+    const phoneHtml = l.phones.length ? l.phones[0] : '<span class="text-gray-400">Not found</span>';
 
-    container.innerHTML += `
-    <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-      <div class="flex items-start justify-between mb-3">
-        <div class="flex-1 min-w-0 mr-4">
-          <div class="font-bold text-gray-800 text-sm mb-0.5 truncate">${l.title}</div>
-          <a href="${l.url}" target="_blank" class="text-xs text-blue-500 hover:underline truncate block">${l.url}</a>
-          <div class="text-xs text-gray-400 mt-0.5">Ranked on page ${l.googlePage} of Google</div>
-        </div>
-        <div class="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-          <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${scoreColor(l.mobileScore)}">Mobile ${l.mobileScore}/100</span>
-          <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${scoreColor(l.seoScore)}">SEO ${l.seoScore}/100</span>
-          ${l.hasSSL ? '' : '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700">No SSL</span>'}
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-xs">
-        <div class="bg-gray-50 rounded-lg p-2">
-          <div class="text-gray-400 mb-0.5">Load time</div>
-          <div class="font-semibold text-gray-700">${l.loadTime}</div>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-2">
-          <div class="text-gray-400 mb-0.5">LCP</div>
-          <div class="font-semibold text-gray-700">${l.lcp}</div>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-2">
-          <div class="text-gray-400 mb-0.5">Email</div>
-          <div class="font-semibold text-gray-700 truncate">${emailHtml}</div>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-2">
-          <div class="text-gray-400 mb-0.5">Phone</div>
-          <div class="font-semibold text-gray-700">${phoneHtml}</div>
-        </div>
-      </div>
-
-      ${issueHtml ? `<div class="mb-3">${issueHtml}${l.issues.length > 5 ? `<span class="text-xs text-gray-400">+${l.issues.length - 5} more issues</span>` : ''}</div>` : ''}
-
-      <div class="bg-blue-50 border-l-4 border-blue-400 rounded-r-lg p-3 mb-3">
-        <div class="text-xs font-bold text-blue-600 mb-1">AI Pitch (based on real findings)</div>
-        <p class="text-sm text-gray-700 leading-relaxed" id="pitch-${idx}">${l.pitch}</p>
-      </div>
-
-      <div class="flex gap-2">
-        <button onclick="copyPitch(${idx})" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Copy pitch</button>
-        <a href="${l.url}" target="_blank" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">View site</a>
-        <button onclick="copyEmail(${idx}, '${l.emails[0] || ''}')" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Copy email</button>
-      </div>
-    </div>`;
+    container.innerHTML += '<div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">' +
+      '<div class="flex items-start justify-between mb-3">' +
+        '<div class="flex-1 min-w-0 mr-4">' +
+          '<div class="font-bold text-gray-800 text-sm mb-0.5 truncate">' + l.title + '</div>' +
+          '<a href="' + l.url + '" target="_blank" class="text-xs text-blue-500 hover:underline truncate block">' + l.url + '</a>' +
+          '<div class="text-xs text-gray-400 mt-0.5">Ranked on page ' + l.googlePage + ' of Google</div>' +
+        '</div>' +
+        '<div class="flex gap-2 flex-shrink-0 flex-wrap justify-end">' +
+          '<span class="text-xs font-semibold px-2.5 py-1 rounded-full ' + scoreColor(l.mobileScore) + '">Mobile ' + l.mobileScore + '/100</span>' +
+          '<span class="text-xs font-semibold px-2.5 py-1 rounded-full ' + scoreColor(l.seoScore) + '">SEO ' + l.seoScore + '/100</span>' +
+          (l.hasSSL ? '' : '<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700">No SSL</span>') +
+        '</div>' +
+      '</div>' +
+      '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-xs">' +
+        '<div class="bg-gray-50 rounded-lg p-2"><div class="text-gray-400 mb-0.5">Load time</div><div class="font-semibold text-gray-700">' + l.loadTime + '</div></div>' +
+        '<div class="bg-gray-50 rounded-lg p-2"><div class="text-gray-400 mb-0.5">LCP</div><div class="font-semibold text-gray-700">' + l.lcp + '</div></div>' +
+        '<div class="bg-gray-50 rounded-lg p-2"><div class="text-gray-400 mb-0.5">Email</div><div class="font-semibold text-gray-700 truncate">' + emailHtml + '</div></div>' +
+        '<div class="bg-gray-50 rounded-lg p-2"><div class="text-gray-400 mb-0.5">Phone</div><div class="font-semibold text-gray-700">' + phoneHtml + '</div></div>' +
+      '</div>' +
+      (issueHtml ? '<div class="mb-3">' + issueHtml + (l.issues.length > 5 ? '<span class="text-xs text-gray-400">+' + (l.issues.length - 5) + ' more issues</span>' : '') + '</div>' : '') +
+      '<div class="bg-blue-50 border-l-4 border-blue-400 rounded-r-lg p-3 mb-3">' +
+        '<div class="text-xs font-bold text-blue-600 mb-1">AI Pitch (based on real findings)</div>' +
+        '<p class="text-sm text-gray-700 leading-relaxed" id="pitch-' + idx + '">' + l.pitch + '</p>' +
+      '</div>' +
+      '<div class="flex gap-2">' +
+        '<button onclick="copyPitch(' + idx + ')" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Copy pitch</button>' +
+        '<a href="' + l.url + '" target="_blank" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">View site</a>' +
+        '<button onclick="copyEmail(' + idx + ', \'' + (l.emails[0] || '') + '\')" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Copy email</button>' +
+      '</div>' +
+    '</div>';
   });
 }
 
 function copyPitch(idx) {
-  const text = document.getElementById(`pitch-${idx}`)?.textContent;
+  const text = document.getElementById('pitch-' + idx)?.textContent;
   if (text) { navigator.clipboard.writeText(text); alert('Pitch copied!'); }
 }
 
@@ -294,7 +270,7 @@ function copyEmail(idx, email) {
 
 function downloadCSV() {
   if (!currentJobId) return;
-  window.open(`${API}/job/${currentJobId}/csv`, '_blank');
+  window.open(API + '/job/' + currentJobId + '/csv', '_blank');
 }
 
 function stopJob() {
@@ -304,10 +280,10 @@ function stopJob() {
   document.getElementById('stop-btn').classList.add('hidden');
   document.getElementById('progress-badge').textContent = 'Stopped';
   document.getElementById('progress-badge').className = 'text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-600';
-  addLog(`[${now()}] ⏹ Search stopped by user — ${document.getElementById('stat-leads').textContent} leads saved`);
+  addLog('[' + now() + '] Search stopped -- ' + document.getElementById('stat-leads').textContent + ' leads saved');
   if (document.getElementById('results-section').innerHTML !== '') {
     document.getElementById('download-bar').classList.remove('hidden');
-    document.getElementById('download-label').textContent = `${document.getElementById('stat-leads').textContent} leads ready so far — download what was collected`;
+    document.getElementById('download-label').textContent = document.getElementById('stat-leads').textContent + ' leads ready -- download what was collected';
   }
 }
 
