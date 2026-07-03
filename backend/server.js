@@ -231,38 +231,64 @@ async function generatePitches(businessName, url, crawl, pageSpeed, query, aiKey
     ...(!crawl.hasH1 ? ["No H1 heading on homepage"] : []),
     ...(!crawl.hasMetaDesc ? ["No meta description tag"] : []),
   ];
+  const topIssues = allIssues.slice(0, 5).join("; ");
+  const googlePage = crawl.googlePage || "unknown";
 
-  const topIssues = allIssues.slice(0, 3).join(", ");
+  // CTR data by page (industry averages)
+  const ctrMap = { 1:"~28%", 2:"~6%", 3:"~3%", 4:"~2%", 5:"~1.5%" };
+  const ctr = ctrMap[googlePage] || "<1%";
+  const page1Ctr = "~28%";
 
-  const prompt = `You are a web professional who has ALREADY audited this business's website. Write TWO short cold outreach emails. Return ONLY valid JSON, no markdown, no code blocks.
+  const prompt = `You are an SEO and web design expert who has ALREADY audited this business's website. The audit is done — present findings as facts, never offer to run one.
 
+Write TWO cold outreach emails. Return ONLY valid JSON, no markdown, no code blocks.
+
+=== AUDIT DATA ===
 Business: ${businessName}
 Website: ${url}
-Niche: "${query}"
-Google page they rank on: ${pageSpeed ? `page ${crawl.googlePage}` : "unknown"}
-Mobile score: ${pageSpeed?.mobileScore ?? "unknown"}/100
-Top issues found: ${topIssues || "general performance issues"}
-Load time: ${pageSpeed?.tti ?? "unknown"}
+Search query (niche + location): "${query}"
+Google page found on: PAGE ${googlePage} (meaning they are buried — only ${ctr} of searchers ever reach this page)
+Page 1 competitors get: ${page1Ctr} of all clicks — that is the calls and bookings this business is MISSING right now
+Mobile performance score: ${pageSpeed?.mobileScore ?? "N/A"}/100  (below 50 = slow site = Google ranks it lower)
+Desktop score: ${pageSpeed?.desktopScore ?? "N/A"}/100
+SEO score: ${pageSpeed?.seoScore ?? "N/A"}/100
+Load time (TTI): ${pageSpeed?.tti ?? "N/A"}
+SSL: ${pageSpeed?.hasSSL ? "Yes" : "NO — site is flagged as insecure by browsers"}
+Technical issues found: ${topIssues || "general performance and SEO issues"}
+Has H1 heading: ${crawl.hasH1 ? "Yes" : "No — missing, hurts rankings"}
+Has meta description: ${crawl.hasMetaDesc ? "Yes" : "No — missing, hurts click-through rate"}
 
-EMAIL 1 — SEO pitch:
-- You've audited their site. Mention ONE headline finding that is hurting their rankings or traffic.
-- Say the full audit report is attached (as a PDF).
-- CTA: ask if they'd like you to fix it — keep it soft and human.
-- 3-4 sentences max.
+=== INSTRUCTIONS ===
 
-EMAIL 2 — Design pitch:
-- You've looked at their site design. Be specific about what looks outdated or unprofessional.
-- Say you've already drafted a redesigned version and you'll show it to them free with no obligation.
-- CTA: ask if they'd like to see it.
-- 3-4 sentences max.
+EMAIL 1 — SEO Pitch (attach the PDF audit report to this):
+- Open by naming the exact page they're on (e.g. "I found [Business] on page ${googlePage} of Google for [service] in [city]")
+- Tell them what that means in plain English — how many people searching for their service never see them, and that the businesses on page 1 are getting those calls instead
+- Mention the single most damaging technical issue from the audit (from the data above) and why it is directly hurting their ranking
+- Include a short 3-row keyword search volume table (realistic estimates for their niche + city, monthly searches) like:
+  Keyword | Est. monthly searches
+  [their main service] [city] | ~XXX
+  [variant keyword] [city] | ~XXX
+  [near me variant] | ~XXX
+  (use realistic numbers based on city size and niche — a Lagos plumber will have different volume than a Dubai dentist)
+- Say the full audit PDF is attached with every issue found
+- CTA: soft ask — "Would it be worth a quick chat about fixing this?"
+- Tone: direct, human, like a freelancer who spotted a real problem — not salesy
 
-Rules for BOTH:
-- Never offer to "run an audit" — it is already done
-- Never use buzzwords: seamless, leverage, empower, holistic, synergy
-- Sound like a real human freelancer, not an agency
-- No subject lines, just the email body text
+EMAIL 2 — Web Design Pitch:
+- Open by noting you looked at the site while auditing it and spotted specific design/UX issues that are hurting conversions (name 1-2 specific things based on the audit — slow load, no clear CTA, mobile layout broken, looks like it hasn't been updated in years, etc.)
+- Explain that even if SEO improves and brings people to page 1, a poor-looking site will lose those visitors immediately — you need both
+- Say you've already mocked up a redesigned version and will share it at no cost or obligation just to show them what's possible
+- CTA: "Want me to send it over?"
+- Tone: same — human, direct, no jargon
 
-Return exactly this JSON structure:
+Rules for BOTH emails:
+- NEVER offer to "run an audit" — it is already done and the PDF is attached
+- NEVER use: seamless, leverage, empower, holistic, synergy, game-changer, cutting-edge, boost
+- Sound like one real freelancer writing to one real business owner
+- No subject lines — body text only
+- Max 5 sentences each (the keyword table in email 1 is additional, not counted)
+
+Return exactly this JSON:
 {"seoPitch": "...", "designPitch": "..."}`;
 
   try {
