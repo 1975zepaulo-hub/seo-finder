@@ -817,6 +817,8 @@ async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider, aiMod
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────
+app.get("/api/ping", (req, res) => res.json({ ok: true, ts: Date.now() }));
+
 // Verify a user-supplied AI key with a minimal test call
 app.post("/api/verify-key", async (req, res) => {
   const { provider, key, model } = req.body;
