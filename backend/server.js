@@ -415,13 +415,9 @@ async function runJob(jobId, query, startPage, endPage) {
       const crawl = await crawlSite(r.url);
       job.crawled++;
 
-      if (!crawl.emails.length) {
-        job.log(`  ↳ [${idx}] No email — skipped`);
-        return;
-      }
-
-      // Step 2: only run PageSpeed audit if email was found
-      job.log(`  ↳ [${idx}] Email found (${crawl.emails[0]}) — running full audit...`);
+      // Step 2: run PageSpeed for all sites (email or not)
+      const hasEmail = crawl.emails.length > 0;
+      job.log(`  ↳ [${idx}] ${hasEmail ? 'Email: ' + crawl.emails[0] : 'No email'} — auditing...`);
       const pageSpeed = await runPageSpeed(r.url);
 
       const ps = pageSpeed || {
@@ -429,7 +425,7 @@ async function runJob(jobId, query, startPage, endPage) {
         lcp: 'N/A', tbt: 'N/A', cls: 'N/A', fcp: 'N/A', tti: 'N/A',
         hasSSL: r.url.startsWith('https'), issues: [], issueLabels: [],
       };
-      if (!pageSpeed) job.log(`  ↳ [${idx}] PageSpeed unavailable — lead saved without scores`);
+      if (!pageSpeed) job.log(`  ↳ [${idx}] PageSpeed unavailable — saved with basic data`);
 
       crawl.googlePage = r.page;
       const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, ps, query);
@@ -460,14 +456,15 @@ async function runJob(jobId, query, startPage, endPage) {
         designPitch,
       });
 
-      job.log(`  ↳ [${idx}] Mobile: ${ps.mobileScore}/100 · SEO: ${ps.seoScore}/100 · Email: ${crawl.emails[0]}`);
+      job.log(`  ↳ [${idx}] Mobile: ${ps.mobileScore}/100 · SEO: ${ps.seoScore}/100 · ${crawl.emails.length ? 'Email: ' + crawl.emails[0] : 'No email'}`);
       job.leads = [...leads];
     }));
   }
 
   job.status = "done";
   job.leads = leads;
-  job.log(`✓ Done — ${leads.length} contactable leads with pitches`);
+  const withEmail = leads.filter(l => l.emails.length).length;
+  job.log(`✓ Done — ${leads.length} leads audited · ${withEmail} with email · ${leads.length - withEmail} without`);
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────

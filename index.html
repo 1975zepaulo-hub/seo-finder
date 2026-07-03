@@ -187,7 +187,7 @@
         </button>
       </div>
     </div>
-    <p class="text-center text-slate-500 text-xs mt-3">Only leads with a contactable email are shown &mdash; no wasted results</p>
+    <p class="text-center text-slate-500 text-xs mt-3">All audited leads shown &mdash; email leads highlighted for direct outreach</p>
   </div>
 </div>
 
@@ -220,24 +220,24 @@
   <!-- Stats -->
   <div id="stats-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-1">Sites crawled</div>
-      <div class="text-2xl font-bold text-slate-800" id="stat-found">0</div>
-      <div class="text-xs text-slate-300 mt-0.5" id="stat-found-sub">of 0 found</div>
+      <div class="text-xs font-medium text-slate-400 mb-1">Total leads</div>
+      <div class="text-2xl font-bold text-slate-800" id="stat-leads">0</div>
+      <div class="text-xs text-slate-300 mt-0.5" id="stat-found-sub">of 0 crawled</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-1">Have email</div>
-      <div class="text-2xl font-bold text-blue-600" id="stat-emails">0</div>
-      <div class="text-xs text-slate-300 mt-0.5">contactable</div>
+      <div class="text-xs font-medium text-slate-400 mb-1">With email</div>
+      <div class="text-2xl font-bold text-emerald-600" id="stat-emails">0</div>
+      <div class="text-xs text-slate-300 mt-0.5">direct outreach</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+      <div class="text-xs font-medium text-slate-400 mb-1">No email</div>
+      <div class="text-2xl font-bold text-amber-500" id="stat-noemail">0</div>
+      <div class="text-xs text-slate-300 mt-0.5">via contact form</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
       <div class="text-xs font-medium text-slate-400 mb-1">Avg SEO score</div>
       <div class="text-2xl font-bold text-orange-500" id="stat-seo">--</div>
-      <div class="text-xs text-slate-300 mt-0.5">email leads only</div>
-    </div>
-    <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-1">Fully audited</div>
-      <div class="text-2xl font-bold text-emerald-600" id="stat-leads">0</div>
-      <div class="text-xs text-slate-300 mt-0.5">PDF + pitches ready</div>
+      <div class="text-xs text-slate-300 mt-0.5">all audited leads</div>
     </div>
   </div>
 
@@ -416,9 +416,9 @@ async function startSearch() {
   document.getElementById('progress-badge').textContent = 'Running';
   document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
   document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-yellow-400 pulse-dot';
-  ['stat-found','stat-emails','stat-leads'].forEach(id => document.getElementById(id).textContent = '0');
+  ['stat-leads','stat-emails','stat-noemail'].forEach(id => document.getElementById(id).textContent = '0');
   document.getElementById('stat-seo').textContent = '--';
-  document.getElementById('stat-found-sub').textContent = 'of 0 found';
+  document.getElementById('stat-found-sub').textContent = 'of 0 crawled';
   document.getElementById('progress-bar').style.width = '0%';
   document.getElementById('progress-count').textContent = '0 audited';
 
@@ -451,15 +451,17 @@ async function pollJob() {
     const leads = job.leads || [];
     const crawled = job.crawled || 0;
     const total = job.totalFound || 0;
+    const withEmail = leads.filter(l => l.emails && l.emails.length).length;
+    const noEmail = leads.length - withEmail;
 
-    document.getElementById('stat-found').textContent = crawled;
-    document.getElementById('stat-found-sub').textContent = 'of ' + total + ' found';
-    document.getElementById('stat-emails').textContent = leads.length;
     document.getElementById('stat-leads').textContent = leads.length;
+    document.getElementById('stat-emails').textContent = withEmail;
+    document.getElementById('stat-noemail').textContent = noEmail;
+    document.getElementById('stat-found-sub').textContent = 'of ' + crawled + ' crawled';
 
     const pct = total ? Math.min(95, Math.round((crawled / total) * 100)) : 0;
     document.getElementById('progress-bar').style.width = pct + '%';
-    document.getElementById('progress-count').textContent = crawled + '/' + total + ' crawled &middot; ' + leads.length + ' with email';
+    document.getElementById('progress-count').textContent = crawled + '/' + total + ' crawled &middot; ' + leads.length + ' leads';
 
     if (leads.length) {
       const validSeo = leads.filter(l => l.seoScore > 0);
@@ -512,6 +514,7 @@ function renderLeads(leads) {
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 mb-1.5 flex-wrap">
             <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">Page ${l.googlePage}</span>
+            ${l.emails && l.emails.length ? '<span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">&#10003; Has Email</span>' : '<span class="text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">No Email</span>'}
             ${!l.hasSSL ? '<span class="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">No SSL</span>' : ''}
             ${l.seoScore < 50 ? '<span class="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">Weak SEO</span>' : ''}
           </div>
