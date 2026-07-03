@@ -74,12 +74,16 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function runPageSpeed(url) {
   try {
     // Run mobile first, then desktop with a small gap to avoid rate limiting
+    const psParams = (strategy) => ({
+      url, key: PAGESPEED_KEY, strategy,
+      category: ['performance', 'seo', 'accessibility', 'best-practices'],
+    });
     const mobileResp = await axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
-      params: { url, key: PAGESPEED_KEY, strategy: "mobile" }, timeout: 20000,
+      params: psParams("mobile"), timeout: 20000,
     });
     await sleep(500);
     const desktopResp = await axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
-      params: { url, key: PAGESPEED_KEY, strategy: "desktop" }, timeout: 20000,
+      params: psParams("desktop"), timeout: 20000,
     });
 
     const mData = mobileResp.data;
@@ -749,11 +753,11 @@ async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider, aiMod
       const crawl = await crawlSite(r.url);
       job.crawled++;
 
-      // Step 2: run PageSpeed for all sites (email or not)
+      // Step 2: only run PageSpeed if we found an email (saves API quota)
       const hasEmail = crawl.emails.length > 0;
-      const emailSrc = hasEmail ? (crawl.emailSource === 'facebook' ? `Email via Facebook: ${crawl.emails[0]}` : `Email: ${crawl.emails[0]}`) : 'No email found';
-      job.log(`  ↳ [${idx}] ${emailSrc} — auditing...`);
-      const pageSpeed = await runPageSpeed(r.url);
+      const emailSrc = hasEmail ? (crawl.emailSource === 'facebook' ? `Email via Facebook: ${crawl.emails[0]}` : `Email: ${crawl.emails[0]}`) : 'No email — skipping PageSpeed';
+      job.log(`  ↳ [${idx}] ${emailSrc}`);
+      const pageSpeed = hasEmail ? await runPageSpeed(r.url) : null;
 
       const ps = pageSpeed || {
         mobileScore: 0, desktopScore: 0, seoScore: 0, accessibilityScore: 0,
