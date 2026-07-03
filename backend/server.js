@@ -17,6 +17,25 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_KEY });
 
 const jobs = {};
 
+// Known directories/aggregators — never actual business sites
+const SKIP_DOMAINS = [
+  'indeed.com','thumbtack.com','yelp.com','angi.com','homeadvisor.com',
+  'angieslist.com','yellowpages.com','bark.com','houzz.com','fixr.co.uk',
+  'checkatrade.com','trustatrader.com','mybuilder.com','rated.people.com',
+  'bidvine.com','taskrabbit.com','amazon.com','facebook.com','linkedin.com',
+  'twitter.com','instagram.com','youtube.com','wikipedia.org','bbb.org',
+  'google.com','bing.com','reddit.com','nextdoor.com','craigslist.org',
+  'tripadvisor.com','trustpilot.com','sitejabber.com','glassdoor.com',
+  'entrepreneur.com','forbes.com','businessinsider.com',
+];
+
+function shouldSkip(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    return SKIP_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+  } catch { return true; }
+}
+
 // ── 1. Search Google pages via Serper ───────────────────────────────────────
 async function searchGoogle(query, startPage = 3, endPage = 10) {
   const results = [];
@@ -43,10 +62,10 @@ async function runPageSpeed(url) {
   try {
     const [mobileResp, desktopResp] = await Promise.all([
       axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
-        params: { url, key: PAGESPEED_KEY, strategy: "mobile" }, timeout: 30000,
+        params: { url, key: PAGESPEED_KEY, strategy: "mobile" }, timeout: 15000,
       }),
       axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
-        params: { url, key: PAGESPEED_KEY, strategy: "desktop" }, timeout: 30000,
+        params: { url, key: PAGESPEED_KEY, strategy: "desktop" }, timeout: 15000,
       }),
     ]);
 
@@ -355,54 +374,71 @@ async function runJob(jobId, query, startPage, endPage) {
   job.totalFound = serperResults.length;
 
   const leads = [];
+  const CONCURRENCY = 3;
 
-  for (let i = 0; i < serperResults.length; i++) {
-    const r = serperResults[i];
+  // Filter out directories before auditing
+  const targets = serperResults.filter(r => {
+    if (shouldSkip(r.url)) {
+      job.log(`Skipped (directory): ${r.url}`);
+      return false;
+    }
+    return true;
+  });
+  job.totalFound = targets.length;
+  job.log(`${targets.length} real business sites to audit (${serperResults.length - targets.length} directories skipped)`);
+
+  // Audit in parallel batches of CONCURRENCY
+  for (let i = 0; i < targets.length; i += CONCURRENCY) {
+    const batch = targets.slice(i, i + CONCURRENCY);
     job.status = "auditing";
-    job.log(`[${i + 1}/${serperResults.length}] Auditing: ${r.url}`);
 
-    const [pageSpeed, crawl] = await Promise.all([runPageSpeed(r.url), crawlSite(r.url)]);
+    await Promise.all(batch.map(async (r, bi) => {
+      const idx = i + bi + 1;
+      job.log(`[${idx}/${targets.length}] Auditing: ${r.url}`);
 
-    if (!pageSpeed) {
-      job.log(`  ↳ Skipped (PageSpeed failed)`);
-      continue;
-    }
-    if (!crawl.emails.length) {
-      job.log(`  ↳ No email found — skipped`);
-      continue;
-    }
+      const [pageSpeed, crawl] = await Promise.all([runPageSpeed(r.url), crawlSite(r.url)]);
 
-    crawl.googlePage = r.page;
-    const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, pageSpeed, query);
+      if (!pageSpeed) {
+        job.log(`  ↳ [${idx}] Skipped (PageSpeed failed)`);
+        return;
+      }
+      if (!crawl.emails.length) {
+        job.log(`  ↳ [${idx}] No email — skipped`);
+        return;
+      }
 
-    leads.push({
-      title: r.title,
-      url: r.url,
-      googlePage: r.page,
-      snippet: r.snippet,
-      mobileScore: pageSpeed.mobileScore,
-      desktopScore: pageSpeed.desktopScore,
-      seoScore: pageSpeed.seoScore,
-      accessibilityScore: pageSpeed.accessibilityScore,
-      loadTime: pageSpeed.tti,
-      lcp: pageSpeed.lcp,
-      tbt: pageSpeed.tbt,
-      fcp: pageSpeed.fcp,
-      tti: pageSpeed.tti,
-      cls: pageSpeed.cls,
-      hasSSL: pageSpeed.hasSSL,
-      issues: pageSpeed.issues,
-      issueLabels: pageSpeed.issueLabels,
-      emails: crawl.emails,
-      phones: crawl.phones,
-      hasH1: crawl.hasH1,
-      hasMetaDesc: crawl.hasMetaDesc,
-      seoPitch,
-      designPitch,
-    });
+      crawl.googlePage = r.page;
+      const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, pageSpeed, query);
 
-    job.log(`  ↳ Mobile: ${pageSpeed.mobileScore}/100 · SEO: ${pageSpeed.seoScore}/100 · Email: ${crawl.emails[0]}`);
-    job.leads = leads;
+      leads.push({
+        title: r.title,
+        url: r.url,
+        googlePage: r.page,
+        snippet: r.snippet,
+        mobileScore: pageSpeed.mobileScore,
+        desktopScore: pageSpeed.desktopScore,
+        seoScore: pageSpeed.seoScore,
+        accessibilityScore: pageSpeed.accessibilityScore,
+        loadTime: pageSpeed.tti,
+        lcp: pageSpeed.lcp,
+        tbt: pageSpeed.tbt,
+        fcp: pageSpeed.fcp,
+        tti: pageSpeed.tti,
+        cls: pageSpeed.cls,
+        hasSSL: pageSpeed.hasSSL,
+        issues: pageSpeed.issues,
+        issueLabels: pageSpeed.issueLabels,
+        emails: crawl.emails,
+        phones: crawl.phones,
+        hasH1: crawl.hasH1,
+        hasMetaDesc: crawl.hasMetaDesc,
+        seoPitch,
+        designPitch,
+      });
+
+      job.log(`  ↳ [${idx}] Mobile: ${pageSpeed.mobileScore}/100 · SEO: ${pageSpeed.seoScore}/100 · Email: ${crawl.emails[0]}`);
+      job.leads = [...leads];
+    }));
   }
 
   job.status = "done";
