@@ -103,6 +103,11 @@
         <div id="verify-result" class="hidden mt-2 text-xs font-semibold px-3 py-2 rounded-lg"></div>
       </div>
 
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-slate-600 mb-2">Model <span class="font-normal text-slate-400" id="model-cost-hint"></span></label>
+        <select id="model-select" class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"></select>
+      </div>
+
       <div class="flex gap-3">
         <button id="verify-btn" onclick="verifyKey()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm py-2.5 rounded-xl transition flex items-center justify-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -116,7 +121,7 @@
       <div id="existing-key-info" class="hidden mt-4 bg-slate-50 rounded-xl p-3 flex items-center justify-between">
         <div>
           <div class="text-xs font-semibold text-slate-600" id="existing-key-label"></div>
-          <div class="text-xs text-slate-400 mt-0.5">Key saved in browser</div>
+          <div class="text-xs text-slate-400 mt-0.5" id="existing-model-label">Key saved in browser</div>
         </div>
         <button onclick="clearKey()" class="text-xs text-red-500 hover:text-red-700 font-semibold">Remove</button>
       </div>
@@ -369,6 +374,29 @@ let pollTimer = null;
 let selectedProvider = 'anthropic';
 let keyVerified = false;
 
+const PROVIDER_MODELS = {
+  anthropic: [
+    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — fastest, cheapest' },
+    { id: 'claude-3-haiku-20240307',   label: 'Claude 3 Haiku — ultra cheap' },
+    { id: 'claude-sonnet-4-5-20251001',label: 'Claude Sonnet 4.5 — smarter, pricier' },
+  ],
+  openai: [
+    { id: 'gpt-4.1-nano',  label: 'GPT-4.1 Nano — cheapest OpenAI model' },
+    { id: 'gpt-4o-mini',   label: 'GPT-4o Mini — fast and cheap' },
+    { id: 'gpt-4.1-mini',  label: 'GPT-4.1 Mini — good balance' },
+    { id: 'gpt-4o',        label: 'GPT-4o — most capable' },
+    { id: 'gpt-4.1',       label: 'GPT-4.1 — latest, premium' },
+  ],
+  openrouter: [
+    { id: 'openai/gpt-4.1-nano',                    label: 'GPT-4.1 Nano — cheapest' },
+    { id: 'anthropic/claude-haiku-4-5',             label: 'Claude Haiku 4.5' },
+    { id: 'openai/gpt-4o-mini',                     label: 'GPT-4o Mini' },
+    { id: 'google/gemini-flash-1.5',                label: 'Gemini Flash 1.5 — very cheap' },
+    { id: 'meta-llama/llama-3.1-8b-instruct:free',  label: 'Llama 3.1 8B — FREE' },
+    { id: 'anthropic/claude-sonnet-4-5',            label: 'Claude Sonnet 4.5' },
+  ],
+};
+
 // ── Settings modal ────────────────────────────────────────────────────────────
 function openSettings() {
   const modal = document.getElementById('settings-modal');
@@ -381,6 +409,7 @@ function openSettings() {
     selectProvider(saved.provider);
     document.getElementById('existing-key-info').classList.remove('hidden');
     document.getElementById('existing-key-label').textContent = saved.provider.charAt(0).toUpperCase() + saved.provider.slice(1) + ' key: ' + saved.key.slice(0,8) + '••••••••';
+    document.getElementById('existing-model-label').textContent = 'Model: ' + (saved.model || 'default');
     document.getElementById('save-btn').disabled = false;
     keyVerified = true;
   }
@@ -408,6 +437,16 @@ function selectProvider(p) {
   });
   const links = { anthropic: 'https://console.anthropic.com/keys', openai: 'https://platform.openai.com/api-keys', openrouter: 'https://openrouter.ai/keys' };
   document.getElementById('get-key-link').href = links[p];
+  // Populate model dropdown
+  const sel = document.getElementById('model-select');
+  const saved = getSavedKey();
+  const savedModel = saved && saved.provider === p ? saved.model : null;
+  sel.innerHTML = PROVIDER_MODELS[p].map(m =>
+    `<option value="${m.id}"${savedModel === m.id ? ' selected' : ''}>${m.label}</option>`
+  ).join('');
+  // Cost hint
+  const hints = { anthropic: '— billed to your Anthropic account', openai: '— billed to your OpenAI account', openrouter: '— billed to your OpenRouter credits' };
+  document.getElementById('model-cost-hint').textContent = hints[p];
   resetVerify();
 }
 
@@ -458,7 +497,8 @@ function showVerifyResult(ok, msg) {
 function saveKey() {
   const key = document.getElementById('api-key-input').value.trim();
   if (!key) return;
-  localStorage.setItem('zaram_ai_key', JSON.stringify({ key, provider: selectedProvider }));
+  const model = document.getElementById('model-select').value;
+  localStorage.setItem('zaram_ai_key', JSON.stringify({ key, provider: selectedProvider, model }));
   updateKeyStatusBar();
   toast('API key saved!');
   closeSettings();
@@ -499,8 +539,10 @@ function updateKeyStatusBar() {
 
 // Run on load
 document.addEventListener('DOMContentLoaded', () => {
+  const saved = getSavedKey();
+  selectProvider(saved ? saved.provider : 'anthropic');
   updateKeyStatusBar();
-  if (!getSavedKey()) {
+  if (!saved) {
     setTimeout(() => openSettings(), 600);
   }
 });
@@ -721,6 +763,7 @@ async function startSearch() {
         'Content-Type': 'application/json',
         'x-ai-key': saved ? saved.key : '',
         'x-ai-provider': saved ? saved.provider : 'anthropic',
+        'x-ai-model': saved ? (saved.model || '') : '',
       },
       body: JSON.stringify({ query, startPage, endPage })
     });

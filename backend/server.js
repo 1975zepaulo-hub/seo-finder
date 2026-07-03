@@ -225,7 +225,7 @@ async function crawlFacebook(fbUrl) {
 }
 
 // ── 4. Generate TWO pitches: SEO email + Design email ───────────────────────
-async function generatePitches(businessName, url, crawl, pageSpeed, query, aiKey, aiProvider) {
+async function generatePitches(businessName, url, crawl, pageSpeed, query, aiKey, aiProvider, aiModel) {
   const allIssues = [
     ...(pageSpeed?.issueLabels || []),
     ...(!crawl.hasH1 ? ["No H1 heading on homepage"] : []),
@@ -271,14 +271,14 @@ Return exactly this JSON structure:
 
     if (provider === "openai") {
       const resp = await axios.post("https://api.openai.com/v1/chat/completions", {
-        model: "gpt-4o-mini",
+        model: aiModel || "gpt-4o-mini",
         max_tokens: 600,
         messages: [{ role: "user", content: prompt }],
       }, { headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" }, timeout: 30000 });
       text = resp.data.choices[0].message.content.trim();
     } else if (provider === "openrouter") {
       const resp = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-        model: "anthropic/claude-haiku-4-5",
+        model: aiModel || "anthropic/claude-haiku-4-5",
         max_tokens: 600,
         messages: [{ role: "user", content: prompt }],
       }, { headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://zaram.app", "X-Title": "Zaram SEO PitchReady" }, timeout: 30000 });
@@ -287,7 +287,7 @@ Return exactly this JSON structure:
       // Default: Anthropic
       const client = new Anthropic({ apiKey: aiKey || process.env.ANTHROPIC_KEY });
       const msg = await client.messages.create({
-        model: "claude-haiku-4-5-20251001",
+        model: aiModel || "claude-haiku-4-5-20251001",
         max_tokens: 600,
         messages: [{ role: "user", content: prompt }],
       });
@@ -450,7 +450,7 @@ function generatePDF(lead, res) {
 }
 
 // ── Main job runner ──────────────────────────────────────────────────────────
-async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider) {
+async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider, aiModel) {
   const job = jobs[jobId];
   job.status = "searching";
   job.log(`Searching Google pages ${startPage}–${endPage} for: ${query}`);
@@ -501,7 +501,7 @@ async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider) {
       if (!pageSpeed) job.log(`  ↳ [${idx}] PageSpeed unavailable — saved with basic data`);
 
       crawl.googlePage = r.page;
-      const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, ps, query, aiKey, aiProvider);
+      const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, ps, query, aiKey, aiProvider, aiModel);
 
       leads.push({
         title: r.title,
@@ -579,6 +579,7 @@ app.post("/api/search", (req, res) => {
 
   const aiKey = req.headers["x-ai-key"] || "";
   const aiProvider = req.headers["x-ai-provider"] || "anthropic";
+  const aiModel = req.headers["x-ai-model"] || "";
 
   const jobId = uuidv4();
   const logs = [];
@@ -589,7 +590,7 @@ app.post("/api/search", (req, res) => {
     startedAt: new Date().toISOString(),
   };
 
-  runJob(jobId, query, startPage, endPage, aiKey, aiProvider).catch((e) => {
+  runJob(jobId, query, startPage, endPage, aiKey, aiProvider, aiModel).catch((e) => {
     jobs[jobId].status = "error";
     jobs[jobId].log("Fatal error: " + e.message);
   });
