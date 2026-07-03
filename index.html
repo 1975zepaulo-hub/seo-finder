@@ -13,13 +13,17 @@
   .card-hover { transition: all 0.2s ease; }
   .card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(0,0,0,0.10); }
   .pulse-dot { animation: pulse 2s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .log-scroll::-webkit-scrollbar { width: 4px; }
   .log-scroll::-webkit-scrollbar-track { background: #0f172a; }
   .log-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
   .fade-in { animation: fadeIn 0.4s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  .itag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 20px; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .itag { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px; }
+  .tab-btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .tab-btn.active { background: #1e1b4b; color: #a78bfa; }
+  .tab-btn:not(.active) { color: #94a3b8; }
+  .tab-btn:not(.active):hover { color: #64748b; }
 </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
@@ -37,14 +41,14 @@
       </div>
     </div>
     <div class="hidden md:flex items-center gap-6 text-xs text-slate-400 font-medium">
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Real Google audits</span>
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>Email contacts only</span>
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block"></span>AI pitches</span>
+      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Real PageSpeed audits</span>
+      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>Emails only</span>
+      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block"></span>PDF report + 2 pitches</span>
     </div>
   </div>
 </nav>
 
-<!-- Hero search -->
+<!-- Hero -->
 <div class="gradient-bg py-12 px-6">
   <div class="max-w-3xl mx-auto text-center mb-8">
     <h1 class="text-3xl md:text-4xl font-bold text-white mb-3 leading-tight">
@@ -52,15 +56,14 @@
       <span class="text-violet-400">and their email address</span>
     </h1>
     <p class="text-slate-400 text-sm max-w-xl mx-auto">
-      We search Google pages 3-10, run real SEO audits, extract contact emails, and write personalised pitches &mdash; only showing leads you can actually reach.
+      Audits Google pages 3-10, runs real SEO checks, extracts emails, generates a PDF report per business, and writes two pitches &mdash; one for SEO, one for design.
     </p>
   </div>
-
   <div class="max-w-2xl mx-auto">
     <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
-      <div class="flex gap-2 mb-3">
+      <div class="mb-3">
         <input id="query" type="text" placeholder="e.g. solar panel installer Lagos or dentist in Manchester..."
-          class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+          class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
           onkeydown="if(event.key==='Enter') startSearch()" />
       </div>
       <div class="flex flex-wrap gap-3 items-end justify-between">
@@ -91,13 +94,13 @@
         </button>
       </div>
     </div>
-    <p class="text-center text-slate-500 text-xs mt-3">Only leads with a contactable email address are shown &mdash; no wasted results</p>
+    <p class="text-center text-slate-500 text-xs mt-3">Only leads with a contactable email are shown &mdash; no wasted results</p>
   </div>
 </div>
 
 <div class="max-w-6xl mx-auto px-6 py-8">
 
-  <!-- Progress panel -->
+  <!-- Progress -->
   <div id="progress-section" class="hidden mb-8 fade-in">
     <div class="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800">
       <div class="px-5 py-4 flex items-center justify-between border-b border-slate-800">
@@ -110,9 +113,7 @@
         </div>
         <div class="flex items-center gap-3">
           <span id="progress-count" class="text-slate-400 text-xs font-mono">0 audited</span>
-          <button id="stop-btn" onclick="stopJob()" class="hidden text-xs bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded-lg font-semibold transition">
-            &#9632; Stop
-          </button>
+          <button id="stop-btn" onclick="stopJob()" class="hidden text-xs bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded-lg font-semibold transition">&#9632; Stop</button>
           <span id="progress-badge" class="text-xs font-bold px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400">Running</span>
         </div>
       </div>
@@ -126,31 +127,19 @@
   <!-- Stats -->
   <div id="stats-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2 flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
-        Sites scanned
-      </div>
+      <div class="text-xs font-medium text-slate-400 mb-2">Sites scanned</div>
       <div class="text-2xl font-bold text-slate-800" id="stat-found">0</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2 flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-        Avg SEO score
-      </div>
+      <div class="text-xs font-medium text-slate-400 mb-2">Avg SEO score</div>
       <div class="text-2xl font-bold text-orange-500" id="stat-seo">--</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2 flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-        Emails found
-      </div>
+      <div class="text-xs font-medium text-slate-400 mb-2">Emails found</div>
       <div class="text-2xl font-bold text-blue-600" id="stat-emails">0</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2 flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Contactable leads
-      </div>
+      <div class="text-xs font-medium text-slate-400 mb-2">Contactable leads</div>
       <div class="text-2xl font-bold text-emerald-600" id="stat-leads">0</div>
     </div>
   </div>
@@ -159,7 +148,7 @@
   <div id="download-bar" class="hidden bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-center justify-between">
     <div>
       <div class="text-sm font-semibold text-emerald-800" id="download-label"></div>
-      <div class="text-xs text-emerald-600 mt-0.5">CSV includes SEO scores, issues, emails, phones &amp; AI pitches</div>
+      <div class="text-xs text-emerald-600 mt-0.5">CSV includes scores, issues, emails, both pitches</div>
     </div>
     <button onclick="downloadCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition flex items-center gap-2 shadow-sm">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -168,8 +157,7 @@
   </div>
 
   <!-- Results -->
-  <div id="results-section" class="space-y-4"></div>
-
+  <div id="results-section" class="space-y-5"></div>
 </div>
 
 <script>
@@ -179,12 +167,13 @@ let pollTimer = null;
 
 function scoreDot(s) { return s >= 70 ? 'bg-emerald-400' : s >= 40 ? 'bg-amber-400' : 'bg-red-400'; }
 function scoreText(s) { return s >= 70 ? 'text-emerald-600' : s >= 40 ? 'text-amber-600' : 'text-red-600'; }
+function scoreBg(s) { return s >= 70 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : s >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'; }
 
 function addLog(msg) {
   const log = document.getElementById('live-log');
-  const line = document.createElement('div');
-  line.innerHTML = '<span class="text-slate-500">[' + new Date().toLocaleTimeString() + ']</span> ' + msg;
-  log.appendChild(line);
+  const d = document.createElement('div');
+  d.innerHTML = '<span class="text-slate-500">[' + new Date().toLocaleTimeString() + ']</span> ' + msg;
+  log.appendChild(d);
   log.scrollTop = log.scrollHeight;
 }
 
@@ -217,8 +206,7 @@ async function startSearch() {
 
   try {
     const resp = await fetch(API + '/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, startPage, endPage })
     });
     const data = await resp.json();
@@ -240,21 +228,19 @@ async function pollJob() {
     const existing = document.getElementById('live-log').innerText;
     (job.logs || []).forEach(l => { if (!existing.includes(l.slice(10))) addLog(l.slice(12)); });
 
-    // Only count/show leads with emails
-    const emailLeads = (job.leads || []).filter(l => l.emails && l.emails.length > 0);
-
+    const leads = job.leads || [];
     document.getElementById('stat-found').textContent = job.totalFound || 0;
-    document.getElementById('stat-leads').textContent = emailLeads.length;
+    document.getElementById('stat-leads').textContent = leads.length;
 
-    if (emailLeads.length) {
-      const emails = emailLeads.reduce((s, l) => s + l.emails.length, 0);
-      const avgSeo = Math.round(emailLeads.reduce((s, l) => s + l.seoScore, 0) / emailLeads.length);
+    if (leads.length) {
+      const emails = leads.reduce((s, l) => s + l.emails.length, 0);
+      const avgSeo = Math.round(leads.reduce((s, l) => s + l.seoScore, 0) / leads.length);
       document.getElementById('stat-emails').textContent = emails;
       document.getElementById('stat-seo').textContent = avgSeo + '/100';
       const pct = job.totalFound ? Math.min(95, Math.round((job.leadsReady / job.totalFound) * 100)) : 0;
       document.getElementById('progress-bar').style.width = pct + '%';
-      document.getElementById('progress-count').textContent = job.leadsReady + '/' + job.totalFound + ' audited &middot; ' + emailLeads.length + ' with email';
-      renderLeads(emailLeads);
+      document.getElementById('progress-count').textContent = job.leadsReady + '/' + job.totalFound + ' audited &middot; ' + leads.length + ' with email';
+      renderLeads(leads);
     }
 
     if (job.status === 'done' || job.status === 'error') {
@@ -266,9 +252,9 @@ async function pollJob() {
       document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full ' + (done ? 'bg-emerald-400' : 'bg-red-400');
       document.getElementById('progress-badge').textContent = done ? 'Done' : 'Error';
       document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1 rounded-full ' + (done ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400');
-      if (emailLeads.length) {
+      if (leads.length) {
         document.getElementById('download-bar').classList.remove('hidden');
-        document.getElementById('download-label').textContent = emailLeads.length + ' contactable leads ready to download';
+        document.getElementById('download-label').textContent = leads.length + ' contactable leads ready — with PDF reports and both pitches';
       }
     }
   } catch(e) {
@@ -276,25 +262,36 @@ async function pollJob() {
   }
 }
 
+function switchTab(idx, tab) {
+  ['seo','design'].forEach(t => {
+    document.getElementById('tab-' + t + '-' + idx).classList.toggle('active', t === tab);
+    document.getElementById('panel-' + t + '-' + idx).classList.toggle('hidden', t !== tab);
+  });
+}
+
 function renderLeads(leads) {
-  const container = document.getElementById('results-section');
-  container.innerHTML = leads.map((l, idx) => {
-    const issuesHtml = l.issues.slice(0, 4).map(i =>
-      '<span class="itag bg-red-50 text-red-600 border border-red-100"><svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' + i + '</span>'
+  document.getElementById('results-section').innerHTML = leads.map((l, idx) => {
+    const issuesHtml = (l.issueLabels || l.issues?.map(i=>i.label||i) || []).slice(0, 4).map(i =>
+      `<span class="itag bg-red-50 text-red-600 border border-red-100">
+        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        ${i}</span>`
     ).join('');
-    const extra = l.issues.length > 4 ? '<span class="itag bg-slate-100 text-slate-500">+' + (l.issues.length - 4) + ' more</span>' : '';
-    const emailLinks = l.emails.slice(0, 2).map(e => '<a href="mailto:' + e + '" class="text-blue-600 hover:underline block truncate">' + e + '</a>').join('');
+    const issueCount = (l.issueLabels || l.issues || []).length;
+    const extra = issueCount > 4 ? `<span class="itag bg-slate-100 text-slate-500">+${issueCount - 4} more</span>` : '';
+    const emailLinks = l.emails.slice(0, 2).map(e => `<a href="mailto:${e}" class="text-blue-600 hover:underline block truncate">${e}</a>`).join('');
 
     return `<div class="bg-white rounded-2xl border border-slate-100 shadow-sm card-hover fade-in overflow-hidden">
 
+      <!-- Header -->
       <div class="px-5 py-4 border-b border-slate-50 flex items-start justify-between gap-4">
         <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2 mb-1.5">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
             <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">Page ${l.googlePage}</span>
             ${!l.hasSSL ? '<span class="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">No SSL</span>' : ''}
+            ${l.seoScore < 50 ? '<span class="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">Weak SEO</span>' : ''}
           </div>
           <div class="font-bold text-slate-800 text-sm leading-snug mb-1">${l.title}</div>
-          <a href="${l.url}" target="_blank" class="text-xs text-blue-500 hover:text-blue-700 hover:underline block truncate max-w-md">${l.url}</a>
+          <a href="${l.url}" target="_blank" class="text-xs text-blue-500 hover:underline block truncate max-w-md">${l.url}</a>
         </div>
         <div class="flex flex-col gap-2 flex-shrink-0 items-end">
           <div class="flex items-center gap-2">
@@ -305,38 +302,78 @@ function renderLeads(leads) {
             <span class="w-2 h-2 rounded-full ${scoreDot(l.seoScore)}"></span>
             <span class="text-xs font-semibold text-slate-500">SEO <span class="${scoreText(l.seoScore)} font-bold">${l.seoScore}/100</span></span>
           </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${scoreDot(l.accessibilityScore)}"></span>
+            <span class="text-xs font-semibold text-slate-500">A11y <span class="${scoreText(l.accessibilityScore)} font-bold">${l.accessibilityScore}/100</span></span>
+          </div>
         </div>
       </div>
 
-      <div class="px-5 py-3 grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-slate-50 bg-slate-50/50">
-        <div><div class="text-xs text-slate-400 mb-0.5">Load time</div><div class="text-sm font-semibold text-slate-700">${l.loadTime}</div></div>
-        <div><div class="text-xs text-slate-400 mb-0.5">LCP</div><div class="text-sm font-semibold text-slate-700">${l.lcp}</div></div>
-        <div><div class="text-xs text-slate-400 mb-0.5">Email</div><div class="text-sm font-semibold">${emailLinks}</div></div>
-        <div><div class="text-xs text-slate-400 mb-0.5">Phone</div><div class="text-sm font-semibold text-slate-700">${l.phones.length ? l.phones[0] : '<span class="text-slate-300">Not found</span>'}</div></div>
+      <!-- Metrics -->
+      <div class="px-5 py-3 grid grid-cols-2 md:grid-cols-5 gap-3 border-b border-slate-50 bg-slate-50/50 text-xs">
+        <div><div class="text-slate-400 mb-0.5">TTI</div><div class="font-semibold text-slate-700">${l.loadTime || l.tti || 'N/A'}</div></div>
+        <div><div class="text-slate-400 mb-0.5">LCP</div><div class="font-semibold text-slate-700">${l.lcp}</div></div>
+        <div><div class="text-slate-400 mb-0.5">CLS</div><div class="font-semibold text-slate-700">${l.cls}</div></div>
+        <div><div class="text-slate-400 mb-0.5">Email</div><div class="font-semibold">${emailLinks}</div></div>
+        <div><div class="text-slate-400 mb-0.5">Phone</div><div class="font-semibold text-slate-700">${l.phones.length ? l.phones[0] : '<span class="text-slate-300">—</span>'}</div></div>
       </div>
 
+      <!-- Issues -->
       ${issuesHtml ? `<div class="px-5 py-3 border-b border-slate-50 flex flex-wrap gap-1.5">${issuesHtml}${extra}</div>` : ''}
 
-      <div class="px-5 py-4 border-b border-slate-50">
-        <div class="flex items-center gap-2 mb-2">
-          <div class="w-5 h-5 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-3 h-3 text-violet-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+      <!-- Pitch tabs -->
+      <div class="px-5 pt-4 pb-2 border-b border-slate-50">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+            <button id="tab-seo-${idx}" class="tab-btn active" onclick="switchTab(${idx},'seo')">
+              <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              SEO Pitch
+            </button>
+            <button id="tab-design-${idx}" class="tab-btn" onclick="switchTab(${idx},'design')">
+              <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+              Design Pitch
+            </button>
           </div>
-          <span class="text-xs font-bold text-violet-700">AI Pitch &mdash; based on real findings only</span>
+          <span class="text-xs text-slate-400 italic">Send pitch first &rarr; attach PDF report</span>
         </div>
-        <p class="text-sm text-slate-600 leading-relaxed" id="pitch-${idx}">${l.pitch}</p>
+
+        <div id="panel-seo-${idx}">
+          <div class="flex items-center gap-1.5 mb-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+            <span class="text-xs font-bold text-violet-700">SEO Pitch &mdash; attach the PDF audit report to this email</span>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed" id="seo-pitch-${idx}">${l.seoPitch || 'Generating...'}</p>
+        </div>
+
+        <div id="panel-design-${idx}" class="hidden">
+          <div class="flex items-center gap-1.5 mb-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            <span class="text-xs font-bold text-blue-700">Design Pitch &mdash; send separately, offer the free redesign concept</span>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed" id="design-pitch-${idx}">${l.designPitch || 'Generating...'}</p>
+        </div>
       </div>
 
-      <div class="px-5 py-3 bg-slate-50 flex items-center gap-2">
-        <button onclick="copyPitch(${idx})" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">
+      <!-- Actions -->
+      <div class="px-5 py-3 bg-slate-50 flex items-center gap-2 flex-wrap">
+        <a href="${API}/job/${currentJobId}/lead/${idx}/pdf" target="_blank"
+          class="flex items-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-lg transition shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          Download PDF Report
+        </a>
+        <button onclick="copyText('seo-pitch-${idx}')" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          Copy pitch
+          Copy SEO pitch
         </button>
-        <button onclick="copyEmail('${l.emails[0]}')" class="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition">
+        <button onclick="copyText('design-pitch-${idx}')" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Copy design pitch
+        </button>
+        <button onclick="copyText('${l.emails[0]||''}')" class="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           Copy email
         </button>
-        <a href="${l.url}" target="_blank" class="flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">
+        <a href="${l.url}" target="_blank" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 px-2 py-1.5 transition">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
           View site
         </a>
@@ -345,14 +382,11 @@ function renderLeads(leads) {
   }).join('');
 }
 
-function copyPitch(idx) {
-  const t = document.getElementById('pitch-' + idx)?.textContent;
-  if (t) navigator.clipboard.writeText(t).then(() => toast('Pitch copied!'));
-}
-
-function copyEmail(email) {
-  if (email) navigator.clipboard.writeText(email).then(() => toast('Email copied!'));
-  else toast('No email for this lead');
+function copyText(idOrText) {
+  const el = document.getElementById(idOrText);
+  const text = el ? el.textContent : idOrText;
+  if (!text) { toast('Nothing to copy'); return; }
+  navigator.clipboard.writeText(text).then(() => toast('Copied!'));
 }
 
 function downloadCSV() {
@@ -366,7 +400,7 @@ function stopJob() {
   document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
   document.getElementById('progress-badge').textContent = 'Stopped';
   document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1 rounded-full bg-slate-500/20 text-slate-400';
-  addLog('Stopped &mdash; ' + document.getElementById('stat-leads').textContent + ' contactable leads saved');
+  addLog('Stopped &mdash; ' + document.getElementById('stat-leads').textContent + ' leads saved');
   resetBtn();
   if (document.getElementById('stat-leads').textContent !== '0') {
     document.getElementById('download-bar').classList.remove('hidden');
