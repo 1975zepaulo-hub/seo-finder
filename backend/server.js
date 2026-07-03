@@ -13,7 +13,6 @@ app.use(express.json());
 
 const SERPER_KEY = process.env.SERPER_KEY;
 const PAGESPEED_KEY = process.env.PAGESPEED_KEY;
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_KEY });
 
 const jobs = {};
 
@@ -226,7 +225,7 @@ async function crawlFacebook(fbUrl) {
 }
 
 // ── 4. Generate TWO pitches: SEO email + Design email ───────────────────────
-async function generatePitches(businessName, url, crawl, pageSpeed, query) {
+async function generatePitches(businessName, url, crawl, pageSpeed, query, aiKey, aiProvider) {
   const allIssues = [
     ...(pageSpeed?.issueLabels || []),
     ...(!crawl.hasH1 ? ["No H1 heading on homepage"] : []),
@@ -267,19 +266,41 @@ Return exactly this JSON structure:
 {"seoPitch": "...", "designPitch": "..."}`;
 
   try {
-    const msg = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 600,
-      messages: [{ role: "user", content: prompt }],
-    });
-    const text = msg.content[0].text.trim();
+    let text;
+    const provider = (aiProvider || "anthropic").toLowerCase();
+
+    if (provider === "openai") {
+      const resp = await axios.post("https://api.openai.com/v1/chat/completions", {
+        model: "gpt-4o-mini",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
+      }, { headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" }, timeout: 30000 });
+      text = resp.data.choices[0].message.content.trim();
+    } else if (provider === "openrouter") {
+      const resp = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+        model: "anthropic/claude-haiku-4-5",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
+      }, { headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://zaram.app", "X-Title": "Zaram SEO PitchReady" }, timeout: 30000 });
+      text = resp.data.choices[0].message.content.trim();
+    } else {
+      // Default: Anthropic
+      const client = new Anthropic({ apiKey: aiKey || process.env.ANTHROPIC_KEY });
+      const msg = await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
+      });
+      text = msg.content[0].text.trim();
+    }
+
     const json = JSON.parse(text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim());
     return { seoPitch: json.seoPitch, designPitch: json.designPitch };
   } catch (e) {
     console.error("Pitch generation error:", e.message);
     return {
-      seoPitch: "Could not generate SEO pitch — check Anthropic API key.",
-      designPitch: "Could not generate design pitch — check Anthropic API key.",
+      seoPitch: "Could not generate pitch — check your API key in Settings.",
+      designPitch: "Could not generate pitch — check your API key in Settings.",
     };
   }
 }
@@ -429,7 +450,7 @@ function generatePDF(lead, res) {
 }
 
 // ── Main job runner ──────────────────────────────────────────────────────────
-async function runJob(jobId, query, startPage, endPage) {
+async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider) {
   const job = jobs[jobId];
   job.status = "searching";
   job.log(`Searching Google pages ${startPage}–${endPage} for: ${query}`);
@@ -480,7 +501,7 @@ async function runJob(jobId, query, startPage, endPage) {
       if (!pageSpeed) job.log(`  ↳ [${idx}] PageSpeed unavailable — saved with basic data`);
 
       crawl.googlePage = r.page;
-      const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, ps, query);
+      const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, ps, query, aiKey, aiProvider);
 
       leads.push({
         title: r.title,
@@ -522,9 +543,42 @@ async function runJob(jobId, query, startPage, endPage) {
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────
+// Verify a user-supplied AI key with a minimal test call
+app.post("/api/verify-key", async (req, res) => {
+  const { provider, key } = req.body;
+  if (!key) return res.status(400).json({ ok: false, error: "No key provided" });
+  try {
+    if (provider === "openai") {
+      await axios.post("https://api.openai.com/v1/chat/completions", {
+        model: "gpt-4o-mini", max_tokens: 5,
+        messages: [{ role: "user", content: "hi" }],
+      }, { headers: { Authorization: `Bearer ${key}` }, timeout: 15000 });
+    } else if (provider === "openrouter") {
+      await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+        model: "anthropic/claude-haiku-4-5", max_tokens: 5,
+        messages: [{ role: "user", content: "hi" }],
+      }, { headers: { Authorization: `Bearer ${key}`, "HTTP-Referer": "https://zaram.app", "X-Title": "Zaram SEO PitchReady" }, timeout: 15000 });
+    } else {
+      // Anthropic
+      const client = new Anthropic({ apiKey: key });
+      await client.messages.create({
+        model: "claude-haiku-4-5-20251001", max_tokens: 5,
+        messages: [{ role: "user", content: "hi" }],
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    const msg = e.response?.data?.error?.message || e.message;
+    res.json({ ok: false, error: msg });
+  }
+});
+
 app.post("/api/search", (req, res) => {
   const { query, startPage = 3, endPage = 10 } = req.body;
   if (!query) return res.status(400).json({ error: "query is required" });
+
+  const aiKey = req.headers["x-ai-key"] || "";
+  const aiProvider = req.headers["x-ai-provider"] || "anthropic";
 
   const jobId = uuidv4();
   const logs = [];
@@ -535,7 +589,7 @@ app.post("/api/search", (req, res) => {
     startedAt: new Date().toISOString(),
   };
 
-  runJob(jobId, query, startPage, endPage).catch((e) => {
+  runJob(jobId, query, startPage, endPage, aiKey, aiProvider).catch((e) => {
     jobs[jobId].status = "error";
     jobs[jobId].log("Fatal error: " + e.message);
   });

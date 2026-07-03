@@ -38,13 +38,91 @@
         <span class="ml-2 text-xs bg-violet-100 text-violet-700 font-semibold px-2 py-0.5 rounded-full">Beta</span>
       </div>
     </div>
-    <div class="hidden md:flex items-center gap-6 text-xs text-slate-400 font-medium">
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Real audits</span>
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>Email leads only</span>
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block"></span>PDF + 2 pitches</span>
+    <div class="flex items-center gap-3">
+      <div id="key-status" class="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-400 cursor-pointer hover:text-violet-500 transition" onclick="openSettings()">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+        <span id="key-status-text">No API key</span>
+      </div>
+      <button onclick="openSettings()" class="flex items-center gap-1.5 text-xs font-semibold bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+      </button>
     </div>
   </div>
 </nav>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div class="bg-gradient-to-r from-violet-600 to-blue-600 px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-white font-bold text-base">AI Settings</h2>
+          <p class="text-violet-200 text-xs mt-0.5">Your key is stored only in your browser — never on our servers.</p>
+        </div>
+        <button onclick="closeSettings()" class="text-white/70 hover:text-white transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="p-6">
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-slate-600 mb-2">AI Provider</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button id="btn-anthropic" onclick="selectProvider('anthropic')" class="provider-btn border-2 border-violet-500 bg-violet-50 text-violet-700 rounded-xl p-3 text-center transition">
+            <div class="text-lg mb-1">🤖</div>
+            <div class="text-xs font-bold">Anthropic</div>
+            <div class="text-xs text-slate-400">Claude Haiku</div>
+          </button>
+          <button id="btn-openai" onclick="selectProvider('openai')" class="provider-btn border-2 border-transparent bg-slate-50 text-slate-600 rounded-xl p-3 text-center transition hover:border-slate-300">
+            <div class="text-lg mb-1">✨</div>
+            <div class="text-xs font-bold">OpenAI</div>
+            <div class="text-xs text-slate-400">GPT-4o mini</div>
+          </button>
+          <button id="btn-openrouter" onclick="selectProvider('openrouter')" class="provider-btn border-2 border-transparent bg-slate-50 text-slate-600 rounded-xl p-3 text-center transition hover:border-slate-300">
+            <div class="text-lg mb-1">🔀</div>
+            <div class="text-xs font-bold">OpenRouter</div>
+            <div class="text-xs text-slate-400">100+ models</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-slate-600 mb-2">
+          API Key
+          <a id="get-key-link" href="https://console.anthropic.com/keys" target="_blank" class="ml-2 text-violet-500 hover:underline font-normal">Get key →</a>
+        </label>
+        <div class="relative">
+          <input id="api-key-input" type="password" placeholder="Paste your API key here..."
+            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 pr-12"
+            oninput="resetVerify()" />
+          <button onclick="toggleKeyVisibility()" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </button>
+        </div>
+        <div id="verify-result" class="hidden mt-2 text-xs font-semibold px-3 py-2 rounded-lg"></div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="verify-btn" onclick="verifyKey()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Verify Key
+        </button>
+        <button id="save-btn" onclick="saveKey()" disabled class="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-xl transition">
+          Save & Continue
+        </button>
+      </div>
+
+      <div id="existing-key-info" class="hidden mt-4 bg-slate-50 rounded-xl p-3 flex items-center justify-between">
+        <div>
+          <div class="text-xs font-semibold text-slate-600" id="existing-key-label"></div>
+          <div class="text-xs text-slate-400 mt-0.5">Key saved in browser</div>
+        </div>
+        <button onclick="clearKey()" class="text-xs text-red-500 hover:text-red-700 font-semibold">Remove</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Hero -->
 <div class="gradient-bg py-12 px-6">
@@ -288,6 +366,144 @@
 const API = 'https://seo-finder-production.up.railway.app/api';
 let currentJobId = null;
 let pollTimer = null;
+let selectedProvider = 'anthropic';
+let keyVerified = false;
+
+// ── Settings modal ────────────────────────────────────────────────────────────
+function openSettings() {
+  const modal = document.getElementById('settings-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  // Restore saved state
+  const saved = getSavedKey();
+  if (saved) {
+    document.getElementById('api-key-input').value = saved.key;
+    selectProvider(saved.provider);
+    document.getElementById('existing-key-info').classList.remove('hidden');
+    document.getElementById('existing-key-label').textContent = saved.provider.charAt(0).toUpperCase() + saved.provider.slice(1) + ' key: ' + saved.key.slice(0,8) + '••••••••';
+    document.getElementById('save-btn').disabled = false;
+    keyVerified = true;
+  }
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+  document.getElementById('settings-modal').classList.remove('flex');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+document.getElementById('settings-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+function selectProvider(p) {
+  selectedProvider = p;
+  ['anthropic','openai','openrouter'].forEach(id => {
+    const btn = document.getElementById('btn-' + id);
+    if (id === p) {
+      btn.className = 'provider-btn border-2 border-violet-500 bg-violet-50 text-violet-700 rounded-xl p-3 text-center transition';
+    } else {
+      btn.className = 'provider-btn border-2 border-transparent bg-slate-50 text-slate-600 rounded-xl p-3 text-center transition hover:border-slate-300';
+    }
+  });
+  const links = { anthropic: 'https://console.anthropic.com/keys', openai: 'https://platform.openai.com/api-keys', openrouter: 'https://openrouter.ai/keys' };
+  document.getElementById('get-key-link').href = links[p];
+  resetVerify();
+}
+
+function toggleKeyVisibility() {
+  const inp = document.getElementById('api-key-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function resetVerify() {
+  keyVerified = false;
+  document.getElementById('save-btn').disabled = true;
+  document.getElementById('verify-result').classList.add('hidden');
+}
+
+async function verifyKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { showVerifyResult(false, 'Please paste an API key first.'); return; }
+  const btn = document.getElementById('verify-btn');
+  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Verifying...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(API + '/verify-key', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: selectedProvider, key })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      keyVerified = true;
+      showVerifyResult(true, 'Key verified successfully!');
+      document.getElementById('save-btn').disabled = false;
+    } else {
+      showVerifyResult(false, 'Invalid key: ' + (data.error || 'Unknown error'));
+    }
+  } catch(e) {
+    showVerifyResult(false, 'Could not reach server. Try again.');
+  }
+  btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Verify Key';
+  btn.disabled = false;
+}
+
+function showVerifyResult(ok, msg) {
+  const el = document.getElementById('verify-result');
+  el.classList.remove('hidden');
+  el.className = 'mt-2 text-xs font-semibold px-3 py-2 rounded-lg ' + (ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600');
+  el.textContent = (ok ? '✓ ' : '✗ ') + msg;
+}
+
+function saveKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) return;
+  localStorage.setItem('zaram_ai_key', JSON.stringify({ key, provider: selectedProvider }));
+  updateKeyStatusBar();
+  toast('API key saved!');
+  closeSettings();
+}
+
+function clearKey() {
+  localStorage.removeItem('zaram_ai_key');
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('existing-key-info').classList.add('hidden');
+  document.getElementById('save-btn').disabled = true;
+  keyVerified = false;
+  updateKeyStatusBar();
+}
+
+function getSavedKey() {
+  try { return JSON.parse(localStorage.getItem('zaram_ai_key')); } catch { return null; }
+}
+
+function updateKeyStatusBar() {
+  const saved = getSavedKey();
+  const statusEl = document.getElementById('key-status');
+  const statusText = document.getElementById('key-status-text');
+  const searchBtn = document.getElementById('search-btn');
+  statusEl.classList.remove('hidden');
+  if (saved) {
+    statusText.textContent = saved.provider.charAt(0).toUpperCase() + saved.provider.slice(1) + ' key saved';
+    statusEl.querySelector('svg').setAttribute('stroke', '#22c55e');
+    selectedProvider = saved.provider;
+    searchBtn.disabled = false;
+    searchBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+  } else {
+    statusText.textContent = 'No API key — click Settings';
+    statusEl.querySelector('svg').setAttribute('stroke', '#f59e0b');
+    searchBtn.disabled = true;
+    searchBtn.classList.add('opacity-50', 'cursor-not-allowed');
+  }
+}
+
+// Run on load
+document.addEventListener('DOMContentLoaded', () => {
+  updateKeyStatusBar();
+  if (!getSavedKey()) {
+    setTimeout(() => openSettings(), 600);
+  }
+});
 
 // ── Location data ─────────────────────────────────────────────────────────────
 const US_STATES = {
@@ -498,8 +714,14 @@ async function startSearch() {
   setProgress(0, 0, 0);
 
   try {
+    const saved = getSavedKey();
     const resp = await fetch(API + '/search', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-ai-key': saved ? saved.key : '',
+        'x-ai-provider': saved ? saved.provider : 'anthropic',
+      },
       body: JSON.stringify({ query, startPage, endPage })
     });
     const data = await resp.json();
