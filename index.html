@@ -263,6 +263,11 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           Find Leads
         </button>
+        <button onclick="openHistoryPanel()" title="Search History"
+          class="border border-slate-200 hover:border-violet-300 hover:bg-violet-50 text-slate-600 hover:text-violet-700 font-semibold px-4 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          History
+        </button>
       </div>
     </div>
     <p class="text-center text-slate-500 text-xs mt-3">Only leads with a contactable email are shown &mdash; includes website and Facebook email lookup</p>
@@ -856,6 +861,7 @@ async function pollJob() {
         document.getElementById('download-bar').classList.remove('hidden');
         document.getElementById('download-label').textContent = leads.length + ' email leads ready — with PDF reports and pitches';
         renderLeads(leads);
+        saveHistory(currentJobId, job.query, leads);
       }
     } else if (leads.length) {
       renderLeads(leads);
@@ -977,6 +983,102 @@ function resetBtn() {
   btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Find Leads';
 }
 
+// ── History ──────────────────────────────────────────────────────────────────
+const HISTORY_KEY = 'zaram_history';
+const MAX_HISTORY = 20;
+
+function saveHistory(jobId, query, leads) {
+  const history = getHistory();
+  // Remove duplicate if re-running same job
+  const filtered = history.filter(h => h.jobId !== jobId);
+  filtered.unshift({
+    jobId,
+    query,
+    date: new Date().toISOString(),
+    leadCount: leads.length,
+    emailCount: leads.filter(l => l.emails && l.emails.length).length,
+    leads,
+  });
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered.slice(0, MAX_HISTORY)));
+    renderHistoryPanel();
+  } catch(e) {
+    // localStorage full — trim oldest entries
+    try {
+      const trimmed = filtered.slice(0, 10).map(h => ({ ...h, leads: h.leads.map(l => ({ ...l, seoPitch: l.seoPitch?.slice(0,200), designPitch: l.designPitch?.slice(0,200) })) }));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+    } catch(_) {}
+  }
+}
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+}
+
+function deleteHistory(jobId) {
+  const filtered = getHistory().filter(h => h.jobId !== jobId);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered));
+  renderHistoryPanel();
+}
+
+function clearAllHistory() {
+  if (!confirm('Delete all search history?')) return;
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistoryPanel();
+}
+
+function loadHistoryEntry(jobId) {
+  const entry = getHistory().find(h => h.jobId === jobId);
+  if (!entry) return;
+  currentJobId = jobId;
+  renderLeads(entry.leads);
+  document.getElementById('download-bar').classList.remove('hidden');
+  document.getElementById('download-label').textContent = entry.leads.length + ' leads loaded from history';
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  closeHistoryPanel();
+}
+
+function openHistoryPanel() {
+  renderHistoryPanel();
+  document.getElementById('history-panel').classList.remove('hidden');
+  document.getElementById('history-overlay').classList.remove('hidden');
+}
+
+function closeHistoryPanel() {
+  document.getElementById('history-panel').classList.add('hidden');
+  document.getElementById('history-overlay').classList.add('hidden');
+}
+
+function renderHistoryPanel() {
+  const history = getHistory();
+  const list = document.getElementById('history-list');
+  if (!history.length) {
+    list.innerHTML = '<div class="text-center py-12 text-slate-400"><svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="text-sm font-medium">No search history yet</p><p class="text-xs mt-1">Completed searches will appear here</p></div>';
+    return;
+  }
+  list.innerHTML = history.map(h => {
+    const d = new Date(h.date);
+    const dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    const timeStr = d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    return `
+      <div class="border border-slate-100 rounded-xl p-4 hover:border-violet-200 hover:bg-violet-50/30 transition group">
+        <div class="flex items-start justify-between gap-3">
+          <button onclick="loadHistoryEntry('${h.jobId}')" class="text-left flex-1 min-w-0">
+            <div class="font-semibold text-slate-800 text-sm truncate">${h.query}</div>
+            <div class="text-xs text-slate-400 mt-0.5">${dateStr} at ${timeStr}</div>
+            <div class="flex gap-3 mt-2">
+              <span class="text-xs bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-full font-medium">${h.leadCount} leads</span>
+              <span class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full font-medium">${h.emailCount} with email</span>
+            </div>
+          </button>
+          <button onclick="deleteHistory('${h.jobId}')" class="opacity-0 group-hover:opacity-100 transition text-slate-300 hover:text-red-400 flex-shrink-0 mt-0.5" title="Delete">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
 function toast(msg) {
   const t = document.createElement('div');
   t.className = 'fixed bottom-6 right-6 bg-slate-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-2xl z-50 fade-in';
@@ -985,5 +1087,26 @@ function toast(msg) {
   setTimeout(() => t.remove(), 2500);
 }
 </script>
+
+<!-- History overlay -->
+<div id="history-overlay" onclick="closeHistoryPanel()" class="hidden fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"></div>
+
+<!-- History slide-in panel -->
+<div id="history-panel" class="hidden fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+    <div>
+      <h2 class="font-bold text-slate-800 text-base">Search History</h2>
+      <p class="text-xs text-slate-400 mt-0.5">Click any search to reload its results</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="clearAllHistory()" class="text-xs text-slate-400 hover:text-red-500 transition font-medium px-2 py-1 rounded hover:bg-red-50">Clear all</button>
+      <button onclick="closeHistoryPanel()" class="text-slate-400 hover:text-slate-700 transition p-1.5 rounded-lg hover:bg-slate-100">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+</div>
+
 </body>
 </html>
