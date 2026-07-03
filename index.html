@@ -24,6 +24,9 @@
   .tab-btn.active { background: #1e1b4b; color: #a78bfa; }
   .tab-btn:not(.active) { color: #94a3b8; }
   .tab-btn:not(.active):hover { color: #64748b; }
+  .niche-chip { font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; background:rgba(255,255,255,0.08); color:#94a3b8; border:1px solid rgba(255,255,255,0.12); cursor:pointer; transition:all 0.15s; }
+  .niche-chip:hover { background:rgba(139,92,246,0.25); color:#c4b5fd; border-color:#7c3aed; }
+  select option { background:#1e293b; color:#e2e8f0; }
 </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
@@ -56,16 +59,106 @@
       <span class="text-violet-400">and their email address</span>
     </h1>
     <p class="text-slate-400 text-sm max-w-xl mx-auto">
-      Audits Google pages 3-10, runs real SEO checks, extracts emails, generates a PDF report per business, and writes two pitches &mdash; one for SEO, one for design.
+      Pick a service niche and a city — we search Google pages 3-10, audit every site, extract emails, generate a PDF report and two pitches per lead.
     </p>
   </div>
-  <div class="max-w-2xl mx-auto">
-    <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
+
+  <div class="max-w-3xl mx-auto">
+    <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-5">
+
+      <!-- Row 1: Niche -->
       <div class="mb-3">
-        <input id="query" type="text" placeholder="e.g. solar panel installer Lagos or dentist in Manchester..."
-          class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-          onkeydown="if(event.key==='Enter') startSearch()" />
+        <label class="block text-xs font-medium text-slate-300 mb-1.5">What service do they need? <span class="text-slate-500">(your niche)</span></label>
+        <div class="relative">
+          <input id="niche" type="text" placeholder="e.g. plumber, dentist, solar installer, web designer, accountant..."
+            class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            oninput="filterNiches(this.value)" onkeydown="if(event.key==='Enter') document.getElementById('city').focus()" />
+          <div id="niche-suggestions" class="hidden absolute z-20 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto"></div>
+        </div>
+        <!-- Quick niche chips -->
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          <span class="text-xs text-slate-500 mr-1 mt-0.5">Popular:</span>
+          <button onclick="setNiche('Plumber')" class="niche-chip">Plumber</button>
+          <button onclick="setNiche('Dentist')" class="niche-chip">Dentist</button>
+          <button onclick="setNiche('Electrician')" class="niche-chip">Electrician</button>
+          <button onclick="setNiche('Real estate agent')" class="niche-chip">Real estate</button>
+          <button onclick="setNiche('Solar panel installer')" class="niche-chip">Solar</button>
+          <button onclick="setNiche('Web designer')" class="niche-chip">Web designer</button>
+          <button onclick="setNiche('Accountant')" class="niche-chip">Accountant</button>
+          <button onclick="setNiche('Hair salon')" class="niche-chip">Hair salon</button>
+          <button onclick="setNiche('Restaurant')" class="niche-chip">Restaurant</button>
+          <button onclick="setNiche('Lawyer')" class="niche-chip">Lawyer</button>
+          <button onclick="setNiche('Gym')" class="niche-chip">Gym</button>
+          <button onclick="setNiche('Roofing contractor')" class="niche-chip">Roofing</button>
+        </div>
       </div>
+
+      <!-- Row 2: Country + City -->
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Country</label>
+          <select id="country" onchange="updateCities()" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            <option value="">-- Select country --</option>
+            <optgroup label="Africa">
+              <option value="Nigeria">🇳🇬 Nigeria</option>
+              <option value="Ghana">🇬🇭 Ghana</option>
+              <option value="Kenya">🇰🇪 Kenya</option>
+              <option value="South Africa">🇿🇦 South Africa</option>
+              <option value="Tanzania">🇹🇿 Tanzania</option>
+              <option value="Uganda">🇺🇬 Uganda</option>
+              <option value="Ethiopia">🇪🇹 Ethiopia</option>
+              <option value="Egypt">🇪🇬 Egypt</option>
+            </optgroup>
+            <optgroup label="UK & Europe">
+              <option value="United Kingdom">🇬🇧 United Kingdom</option>
+              <option value="Ireland">🇮🇪 Ireland</option>
+              <option value="Germany">🇩🇪 Germany</option>
+              <option value="France">🇫🇷 France</option>
+              <option value="Netherlands">🇳🇱 Netherlands</option>
+              <option value="Spain">🇪🇸 Spain</option>
+              <option value="Italy">🇮🇹 Italy</option>
+            </optgroup>
+            <optgroup label="North America">
+              <option value="USA">🇺🇸 United States</option>
+              <option value="Canada">🇨🇦 Canada</option>
+            </optgroup>
+            <optgroup label="Middle East">
+              <option value="UAE">🇦🇪 UAE</option>
+              <option value="Saudi Arabia">🇸🇦 Saudi Arabia</option>
+              <option value="Qatar">🇶🇦 Qatar</option>
+            </optgroup>
+            <optgroup label="Asia Pacific">
+              <option value="Australia">🇦🇺 Australia</option>
+              <option value="India">🇮🇳 India</option>
+              <option value="Singapore">🇸🇬 Singapore</option>
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">City / Region</label>
+          <select id="city" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            <option value="">-- Select country first --</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Query preview -->
+      <div id="query-preview" class="hidden mb-3 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400">Search query:</span>
+          <span id="query-text" class="text-sm text-violet-300 font-semibold ml-2"></span>
+        </div>
+        <button onclick="document.getElementById('query-preview').classList.add('hidden'); document.getElementById('custom-query-row').classList.remove('hidden')" class="text-xs text-slate-500 hover:text-slate-300">Edit manually</button>
+      </div>
+
+      <!-- Manual override (hidden by default) -->
+      <div id="custom-query-row" class="hidden mb-3">
+        <label class="block text-xs font-medium text-slate-300 mb-1.5">Custom search query</label>
+        <input id="custom-query" type="text" placeholder="Type exactly what to search on Google..."
+          class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+      </div>
+
+      <!-- Row 3: Pages + Search -->
       <div class="flex flex-wrap gap-3 items-end justify-between">
         <div class="flex gap-3">
           <div>
@@ -162,6 +255,128 @@
 
 <script>
 const API = 'https://seo-finder-production.up.railway.app/api';
+
+// ── Location data ────────────────────────────────────────────────────────────
+const CITIES = {
+  'Nigeria': ['Lagos','Abuja','Port Harcourt','Kano','Ibadan','Benin City','Kaduna','Enugu','Onitsha','Warri','Abeokuta','Ilorin','Jos','Owerri','Uyo','Calabar','Maiduguri','Zaria','Asaba','Akure'],
+  'Ghana': ['Accra','Kumasi','Tamale','Sekondi-Takoradi','Ashaiman','Cape Coast','Obuasi','Teshie','Tema','Madina'],
+  'Kenya': ['Nairobi','Mombasa','Nakuru','Kisumu','Eldoret','Thika','Malindi','Kitale','Garissa','Kakamega'],
+  'South Africa': ['Johannesburg','Cape Town','Durban','Pretoria','Port Elizabeth','Bloemfontein','East London','Polokwane','Nelspruit','Kimberley'],
+  'Tanzania': ['Dar es Salaam','Mwanza','Arusha','Dodoma','Mbeya','Morogoro','Tanga','Zanzibar'],
+  'Uganda': ['Kampala','Gulu','Lira','Mbarara','Jinja','Mbale','Mukono','Kasese'],
+  'Ethiopia': ['Addis Ababa','Dire Dawa','Mekelle','Adama','Hawassa','Bahir Dar','Gondar'],
+  'Egypt': ['Cairo','Alexandria','Giza','Shubra El Kheima','Port Said','Suez','Luxor'],
+  'United Kingdom': ['London','Manchester','Birmingham','Leeds','Glasgow','Liverpool','Bristol','Sheffield','Edinburgh','Cardiff','Leicester','Coventry','Bradford','Nottingham','Belfast'],
+  'Ireland': ['Dublin','Cork','Limerick','Galway','Waterford','Drogheda','Dundalk'],
+  'Germany': ['Berlin','Hamburg','Munich','Cologne','Frankfurt','Stuttgart','Düsseldorf','Leipzig','Dortmund','Essen'],
+  'France': ['Paris','Marseille','Lyon','Toulouse','Nice','Nantes','Strasbourg','Montpellier','Bordeaux','Lille'],
+  'Netherlands': ['Amsterdam','Rotterdam','The Hague','Utrecht','Eindhoven','Groningen','Tilburg'],
+  'Spain': ['Madrid','Barcelona','Valencia','Seville','Zaragoza','Málaga','Murcia','Palma','Las Palmas','Bilbao'],
+  'Italy': ['Rome','Milan','Naples','Turin','Palermo','Genoa','Bologna','Florence','Venice'],
+  'USA': ['New York, NY','Los Angeles, CA','Chicago, IL','Houston, TX','Phoenix, AZ','Philadelphia, PA','San Antonio, TX','San Diego, CA','Dallas, TX','San Jose, CA','Austin, TX','Jacksonville, FL','Fort Worth, TX','Columbus, OH','Charlotte, NC','Indianapolis, IN','San Francisco, CA','Seattle, WA','Denver, CO','Nashville, TN','Oklahoma City, OK','Las Vegas, NV','Portland, OR','Memphis, TN','Louisville, KY','Atlanta, GA','Miami, FL','Minneapolis, MN','Tampa, FL','New Orleans, LA','Detroit, MI','Boston, MA','Baltimore, MD','El Paso, TX','Washington DC','Milwaukee, WI','Albuquerque, NM','Tucson, AZ','Fresno, CA','Sacramento, CA'],
+  'Canada': ['Toronto, ON','Montreal, QC','Vancouver, BC','Calgary, AB','Edmonton, AB','Ottawa, ON','Winnipeg, MB','Quebec City, QC','Hamilton, ON','Kitchener, ON','London, ON','Victoria, BC','Halifax, NS'],
+  'UAE': ['Dubai','Abu Dhabi','Sharjah','Al Ain','Ajman','Ras Al Khaimah'],
+  'Saudi Arabia': ['Riyadh','Jeddah','Mecca','Medina','Dammam','Khobar','Tabuk'],
+  'Qatar': ['Doha','Al Rayyan','Al Wakrah','Al Khor'],
+  'Australia': ['Sydney, NSW','Melbourne, VIC','Brisbane, QLD','Perth, WA','Adelaide, SA','Gold Coast, QLD','Canberra, ACT','Newcastle, NSW','Wollongong, NSW','Hobart, TAS'],
+  'India': ['Mumbai','Delhi','Bangalore','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad','Jaipur','Surat','Lucknow','Kanpur','Nagpur','Indore','Bhopal'],
+  'Singapore': ['Singapore'],
+};
+
+const NICHES = [
+  'Plumber','Electrician','Roofer','HVAC contractor','Pest control','Landscaper','Painter','Carpenter','Flooring installer','Pool cleaner',
+  'Dentist','Doctor','Optician','Physiotherapist','Chiropractor','Pharmacy','Veterinarian',
+  'Accountant','Solicitor / Lawyer','Financial advisor','Insurance broker','Mortgage broker',
+  'Restaurant','Café','Bakery','Catering company','Food delivery',
+  'Hair salon','Barbershop','Nail salon','Spa','Beauty clinic','Tattoo studio',
+  'Gym','Personal trainer','Yoga studio','Pilates studio',
+  'Web designer','Graphic designer','Photographer','Videographer','Social media agency','SEO agency','Digital marketing agency',
+  'Driving school','Tutoring centre','Language school','Childcare / Nursery',
+  'Real estate agent','Property management company','Interior designer','Architect',
+  'Solar panel installer','CCTV installer','Locksmith','Cleaning company','Security company',
+  'Car mechanic','Auto body shop','Car wash','Driving school',
+  'Event planner','Wedding venue','DJ','Florist',
+  'Hotel','Guesthouse','Short-let apartment','Travel agency',
+  'Printing company','Signage company','Courier service','Laundry service',
+];
+
+function updateCities() {
+  const country = document.getElementById('country').value;
+  const citySelect = document.getElementById('city');
+  citySelect.innerHTML = '<option value="">-- Select city --</option>';
+  if (country && CITIES[country]) {
+    CITIES[country].forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      citySelect.appendChild(opt);
+    });
+  }
+  buildQueryPreview();
+}
+
+function buildQueryPreview() {
+  const niche = document.getElementById('niche').value.trim();
+  const city = document.getElementById('city').value;
+  const country = document.getElementById('country').value;
+
+  if (!niche && !city) {
+    document.getElementById('query-preview').classList.add('hidden');
+    return;
+  }
+
+  let q = niche;
+  if (city) q += ' in ' + city;
+  else if (country) q += ' in ' + country;
+
+  document.getElementById('query-text').textContent = '"' + q + '"';
+  document.getElementById('query-preview').classList.remove('hidden');
+}
+
+function setNiche(val) {
+  document.getElementById('niche').value = val;
+  buildQueryPreview();
+}
+
+function filterNiches(val) {
+  const box = document.getElementById('niche-suggestions');
+  if (!val || val.length < 2) { box.classList.add('hidden'); return; }
+  const matches = NICHES.filter(n => n.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+  if (!matches.length) { box.classList.add('hidden'); return; }
+  box.innerHTML = matches.map(m =>
+    `<div onclick="setNiche('${m}'); document.getElementById('niche-suggestions').classList.add('hidden')"
+      class="px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 cursor-pointer border-b border-slate-700/50 last:border-0">${m}</div>`
+  ).join('');
+  box.classList.remove('hidden');
+}
+
+// close suggestions on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('#niche') && !e.target.closest('#niche-suggestions'))
+    document.getElementById('niche-suggestions').classList.add('hidden');
+});
+
+// update preview when city changes
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('city').addEventListener('change', buildQueryPreview);
+  document.getElementById('niche').addEventListener('input', buildQueryPreview);
+});
+
+function getQuery() {
+  // Check if manual override is visible
+  const custom = document.getElementById('custom-query');
+  if (!document.getElementById('custom-query-row').classList.contains('hidden') && custom.value.trim())
+    return custom.value.trim();
+
+  const niche = document.getElementById('niche').value.trim();
+  const city = document.getElementById('city').value;
+  const country = document.getElementById('country').value;
+
+  if (!niche) return null;
+  let q = niche;
+  if (city) q += ' in ' + city;
+  else if (country) q += ' in ' + country;
+  return q;
+}
 let currentJobId = null;
 let pollTimer = null;
 
@@ -178,10 +393,10 @@ function addLog(msg) {
 }
 
 async function startSearch() {
-  const query = document.getElementById('query').value.trim();
+  const query = getQuery();
   const startPage = parseInt(document.getElementById('startPage').value);
   const endPage = parseInt(document.getElementById('endPage').value);
-  if (!query) { alert('Please enter a search query.'); return; }
+  if (!query) { alert('Please enter a service niche and select a city.'); return; }
 
   const btn = document.getElementById('search-btn');
   btn.disabled = true;
