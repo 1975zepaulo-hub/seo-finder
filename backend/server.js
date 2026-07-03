@@ -399,7 +399,8 @@ async function runJob(jobId, query, startPage, endPage) {
     return true;
   });
   job.totalFound = targets.length;
-  job.log(`${targets.length} real business sites to audit (${serperResults.length - targets.length} directories skipped)`);
+  job.crawled = 0;
+  job.log(`${targets.length} business sites to crawl (${serperResults.length - targets.length} directories removed)`);
 
   // Audit in parallel batches of CONCURRENCY
   for (let i = 0; i < targets.length; i += CONCURRENCY) {
@@ -410,8 +411,9 @@ async function runJob(jobId, query, startPage, endPage) {
       const idx = i + bi + 1;
       job.log(`[${idx}/${targets.length}] Crawling: ${r.url}`);
 
-      // Step 1: crawl for email first — no point running PageSpeed if no email
+      // Step 1: crawl for email first
       const crawl = await crawlSite(r.url);
+      job.crawled++;
 
       if (!crawl.emails.length) {
         job.log(`  ↳ [${idx}] No email — skipped`);
@@ -495,7 +497,9 @@ app.get("/api/job/:id", (req, res) => {
   if (!job) return res.status(404).json({ error: "Not found" });
   res.json({
     id: job.id, status: job.status, query: job.query,
-    totalFound: job.totalFound, leadsReady: job.leads.length,
+    totalFound: job.totalFound,
+    crawled: job.crawled || 0,
+    leadsReady: job.leads.length,
     logs: job.logs.slice(-20), leads: job.leads, startedAt: job.startedAt,
   });
 });

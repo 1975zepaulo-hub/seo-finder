@@ -220,20 +220,24 @@
   <!-- Stats -->
   <div id="stats-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2">Sites scanned</div>
+      <div class="text-xs font-medium text-slate-400 mb-1">Sites crawled</div>
       <div class="text-2xl font-bold text-slate-800" id="stat-found">0</div>
+      <div class="text-xs text-slate-300 mt-0.5" id="stat-found-sub">of 0 found</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2">Avg SEO score</div>
-      <div class="text-2xl font-bold text-orange-500" id="stat-seo">--</div>
-    </div>
-    <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2">Emails found</div>
+      <div class="text-xs font-medium text-slate-400 mb-1">Have email</div>
       <div class="text-2xl font-bold text-blue-600" id="stat-emails">0</div>
+      <div class="text-xs text-slate-300 mt-0.5">contactable</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-2">Contactable leads</div>
+      <div class="text-xs font-medium text-slate-400 mb-1">Avg SEO score</div>
+      <div class="text-2xl font-bold text-orange-500" id="stat-seo">--</div>
+      <div class="text-xs text-slate-300 mt-0.5">email leads only</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+      <div class="text-xs font-medium text-slate-400 mb-1">Fully audited</div>
       <div class="text-2xl font-bold text-emerald-600" id="stat-leads">0</div>
+      <div class="text-xs text-slate-300 mt-0.5">PDF + pitches ready</div>
     </div>
   </div>
 
@@ -414,6 +418,7 @@ async function startSearch() {
   document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-yellow-400 pulse-dot';
   ['stat-found','stat-emails','stat-leads'].forEach(id => document.getElementById(id).textContent = '0');
   document.getElementById('stat-seo').textContent = '--';
+  document.getElementById('stat-found-sub').textContent = 'of 0 found';
   document.getElementById('progress-bar').style.width = '0%';
   document.getElementById('progress-count').textContent = '0 audited';
 
@@ -444,17 +449,22 @@ async function pollJob() {
     (job.logs || []).forEach(l => { if (!existing.includes(l.slice(10))) addLog(l.slice(12)); });
 
     const leads = job.leads || [];
-    document.getElementById('stat-found').textContent = job.totalFound || 0;
+    const crawled = job.crawled || 0;
+    const total = job.totalFound || 0;
+
+    document.getElementById('stat-found').textContent = crawled;
+    document.getElementById('stat-found-sub').textContent = 'of ' + total + ' found';
+    document.getElementById('stat-emails').textContent = leads.length;
     document.getElementById('stat-leads').textContent = leads.length;
 
+    const pct = total ? Math.min(95, Math.round((crawled / total) * 100)) : 0;
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-count').textContent = crawled + '/' + total + ' crawled &middot; ' + leads.length + ' with email';
+
     if (leads.length) {
-      const emails = leads.reduce((s, l) => s + l.emails.length, 0);
-      const avgSeo = Math.round(leads.reduce((s, l) => s + l.seoScore, 0) / leads.length);
-      document.getElementById('stat-emails').textContent = emails;
-      document.getElementById('stat-seo').textContent = avgSeo + '/100';
-      const pct = job.totalFound ? Math.min(95, Math.round((job.leadsReady / job.totalFound) * 100)) : 0;
-      document.getElementById('progress-bar').style.width = pct + '%';
-      document.getElementById('progress-count').textContent = job.leadsReady + '/' + job.totalFound + ' audited &middot; ' + leads.length + ' with email';
+      const validSeo = leads.filter(l => l.seoScore > 0);
+      const avgSeo = validSeo.length ? Math.round(validSeo.reduce((s, l) => s + l.seoScore, 0) / validSeo.length) : 0;
+      if (avgSeo) document.getElementById('stat-seo').textContent = avgSeo + '/100';
       renderLeads(leads);
     }
 
