@@ -157,26 +157,29 @@ async function generatePitch(businessName, url, siteData, pageSpeedData, query) 
     ...(!siteData.hasMetaDesc ? ["No meta description"] : []),
   ];
 
-  const prompt = `You are a web designer reaching out to a cold lead. Write a SHORT, specific, conversational cold outreach message (3-5 sentences max) for this business:
+  const prompt = `You are a web designer who has ALREADY run a full audit on this business's website. Write a SHORT cold outreach message (3-5 sentences) presenting what you found and pitching to fix it.
 
 Business: ${businessName}
 Website: ${url}
-They searched for: "${query}"
-Google page they rank on: ${siteData.googlePage}
+Niche/search: "${query}"
+Google ranking: page ${siteData.googlePage} (they are trying to rank but failing)
 
-Real SEO/performance issues found on their site:
+Audit results you already have:
 ${issues.map((i) => `- ${i}`).join("\n")}
 
-Mobile performance score: ${pageSpeedData?.mobileScore ?? "unknown"}/100
+Mobile score: ${pageSpeedData?.mobileScore ?? "unknown"}/100
 Desktop score: ${pageSpeedData?.desktopScore ?? "unknown"}/100
 Load time: ${pageSpeedData?.loadTime ?? "unknown"}
-Largest Contentful Paint: ${pageSpeedData?.lcp ?? "unknown"}
+LCP: ${pageSpeedData?.lcp ?? "unknown"}
 
 Rules:
-- Only mention issues that are ACTUALLY listed above — never invent problems
+- You ALREADY ran the audit — never offer to run one, never ask if you can send a report
+- Present 1-2 of the most damaging findings as facts you discovered ("I noticed...", "I ran a quick check and found...")
+- Briefly explain why that specific issue is costing them customers or rankings
+- End with a CTA to fix it — offer a quote, a call, or a sample mockup
+- Only mention issues ACTUALLY listed above — never invent problems
 - Sound like a real human, not a bot
-- Don't use buzzwords like "seamless", "leverage", "empower"
-- End with one soft CTA (offer to send a plan, a quick call, or show a sample)
+- No buzzwords like "seamless", "leverage", "empower", "holistic"
 - No subject line, just the message body`;
 
   try {
