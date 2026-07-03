@@ -19,14 +19,26 @@ const jobs = {};
 
 // Known directories/aggregators — never actual business sites
 const SKIP_DOMAINS = [
-  'indeed.com','thumbtack.com','yelp.com','angi.com','homeadvisor.com',
-  'angieslist.com','yellowpages.com','bark.com','houzz.com','fixr.co.uk',
-  'checkatrade.com','trustatrader.com','mybuilder.com','rated.people.com',
-  'bidvine.com','taskrabbit.com','amazon.com','facebook.com','linkedin.com',
-  'twitter.com','instagram.com','youtube.com','wikipedia.org','bbb.org',
-  'google.com','bing.com','reddit.com','nextdoor.com','craigslist.org',
-  'tripadvisor.com','trustpilot.com','sitejabber.com','glassdoor.com',
-  'entrepreneur.com','forbes.com','businessinsider.com',
+  // Job/service directories
+  'indeed.com','thumbtack.com','bark.com','bidvine.com','taskrabbit.com',
+  'angi.com','homeadvisor.com','angieslist.com','houzz.com','fixr.co.uk',
+  'checkatrade.com','trustatrader.com','mybuilder.com','ratedpeople.com',
+  'habitissimo.com','porch.com','networx.com','improvenet.com',
+  // Review/listing sites
+  'yelp.com','yellowpages.com','bbb.org','trustpilot.com','sitejabber.com',
+  'tripadvisor.com','foursquare.com','opentable.com','zomato.com',
+  'bestpickreports.com','homewyse.com','costimates.com','fixr.com',
+  'expertise.com','craftjack.com','localiq.com','yell.com','scoot.co.uk',
+  'freeindex.co.uk','hotfrog.co.uk','thomson.co.uk','192.com',
+  // Social / big platforms
+  'facebook.com','linkedin.com','twitter.com','instagram.com','tiktok.com',
+  'youtube.com','pinterest.com','nextdoor.com','reddit.com',
+  // General web
+  'google.com','bing.com','yahoo.com','amazon.com','ebay.com',
+  'wikipedia.org','craigslist.org','gumtree.com','olx.com',
+  // News/media
+  'glassdoor.com','entrepreneur.com','forbes.com','businessinsider.com',
+  'inc.com','huffpost.com','theguardian.com','bbc.co.uk','dailymail.co.uk',
 ];
 
 function shouldSkip(url) {
@@ -57,17 +69,19 @@ async function searchGoogle(query, startPage = 3, endPage = 10) {
   return results;
 }
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 // ── 2. PageSpeed Insights ────────────────────────────────────────────────────
 async function runPageSpeed(url) {
   try {
-    const [mobileResp, desktopResp] = await Promise.all([
-      axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
-        params: { url, key: PAGESPEED_KEY, strategy: "mobile" }, timeout: 15000,
-      }),
-      axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
-        params: { url, key: PAGESPEED_KEY, strategy: "desktop" }, timeout: 15000,
-      }),
-    ]);
+    // Run mobile first, then desktop with a small gap to avoid rate limiting
+    const mobileResp = await axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
+      params: { url, key: PAGESPEED_KEY, strategy: "mobile" }, timeout: 20000,
+    });
+    await sleep(500);
+    const desktopResp = await axios.get("https://www.googleapis.com/pagespeedonline/v5/runPagespeed", {
+      params: { url, key: PAGESPEED_KEY, strategy: "desktop" }, timeout: 20000,
+    });
 
     const mData = mobileResp.data;
     const dData = desktopResp.data;
@@ -398,36 +412,40 @@ async function runJob(jobId, query, startPage, endPage) {
 
       const [pageSpeed, crawl] = await Promise.all([runPageSpeed(r.url), crawlSite(r.url)]);
 
-      if (!pageSpeed) {
-        job.log(`  ↳ [${idx}] Skipped (PageSpeed failed)`);
-        return;
-      }
       if (!crawl.emails.length) {
         job.log(`  ↳ [${idx}] No email — skipped`);
         return;
       }
 
+      // If PageSpeed failed, use empty fallback so the lead still shows
+      const ps = pageSpeed || {
+        mobileScore: 0, desktopScore: 0, seoScore: 0, accessibilityScore: 0,
+        lcp: 'N/A', tbt: 'N/A', cls: 'N/A', fcp: 'N/A', tti: 'N/A',
+        hasSSL: r.url.startsWith('https'), issues: [], issueLabels: [],
+      };
+      if (!pageSpeed) job.log(`  ↳ [${idx}] PageSpeed failed — including anyway (has email)`);
+
       crawl.googlePage = r.page;
-      const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, pageSpeed, query);
+      const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, ps, query);
 
       leads.push({
         title: r.title,
         url: r.url,
         googlePage: r.page,
         snippet: r.snippet,
-        mobileScore: pageSpeed.mobileScore,
-        desktopScore: pageSpeed.desktopScore,
-        seoScore: pageSpeed.seoScore,
-        accessibilityScore: pageSpeed.accessibilityScore,
-        loadTime: pageSpeed.tti,
-        lcp: pageSpeed.lcp,
-        tbt: pageSpeed.tbt,
-        fcp: pageSpeed.fcp,
-        tti: pageSpeed.tti,
-        cls: pageSpeed.cls,
-        hasSSL: pageSpeed.hasSSL,
-        issues: pageSpeed.issues,
-        issueLabels: pageSpeed.issueLabels,
+        mobileScore: ps.mobileScore,
+        desktopScore: ps.desktopScore,
+        seoScore: ps.seoScore,
+        accessibilityScore: ps.accessibilityScore,
+        loadTime: ps.tti,
+        lcp: ps.lcp,
+        tbt: ps.tbt,
+        fcp: ps.fcp,
+        tti: ps.tti,
+        cls: ps.cls,
+        hasSSL: ps.hasSSL,
+        issues: ps.issues,
+        issueLabels: ps.issueLabels,
         emails: crawl.emails,
         phones: crawl.phones,
         hasH1: crawl.hasH1,
@@ -436,7 +454,7 @@ async function runJob(jobId, query, startPage, endPage) {
         designPitch,
       });
 
-      job.log(`  ↳ [${idx}] Mobile: ${pageSpeed.mobileScore}/100 · SEO: ${pageSpeed.seoScore}/100 · Email: ${crawl.emails[0]}`);
+      job.log(`  ↳ [${idx}] Mobile: ${ps.mobileScore}/100 · SEO: ${ps.seoScore}/100 · Email: ${crawl.emails[0]}`);
       job.leads = [...leads];
     }));
   }
