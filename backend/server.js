@@ -408,22 +408,26 @@ async function runJob(jobId, query, startPage, endPage) {
 
     await Promise.all(batch.map(async (r, bi) => {
       const idx = i + bi + 1;
-      job.log(`[${idx}/${targets.length}] Auditing: ${r.url}`);
+      job.log(`[${idx}/${targets.length}] Crawling: ${r.url}`);
 
-      const [pageSpeed, crawl] = await Promise.all([runPageSpeed(r.url), crawlSite(r.url)]);
+      // Step 1: crawl for email first — no point running PageSpeed if no email
+      const crawl = await crawlSite(r.url);
 
       if (!crawl.emails.length) {
         job.log(`  ↳ [${idx}] No email — skipped`);
         return;
       }
 
-      // If PageSpeed failed, use empty fallback so the lead still shows
+      // Step 2: only run PageSpeed audit if email was found
+      job.log(`  ↳ [${idx}] Email found (${crawl.emails[0]}) — running full audit...`);
+      const pageSpeed = await runPageSpeed(r.url);
+
       const ps = pageSpeed || {
         mobileScore: 0, desktopScore: 0, seoScore: 0, accessibilityScore: 0,
         lcp: 'N/A', tbt: 'N/A', cls: 'N/A', fcp: 'N/A', tti: 'N/A',
         hasSSL: r.url.startsWith('https'), issues: [], issueLabels: [],
       };
-      if (!pageSpeed) job.log(`  ↳ [${idx}] PageSpeed failed — including anyway (has email)`);
+      if (!pageSpeed) job.log(`  ↳ [${idx}] PageSpeed unavailable — lead saved without scores`);
 
       crawl.googlePage = r.page;
       const { seoPitch, designPitch } = await generatePitches(r.title, r.url, crawl, ps, query);
