@@ -396,322 +396,591 @@ Return exactly this JSON:
 
 // ── 5. Generate PDF audit report ─────────────────────────────────────────────
 function generatePDF(lead, res) {
-  const doc = new PDFDocument({ margin: 50, size: "A4", autoFirstPage: true });
+  const doc = new PDFDocument({ margin: 50, size: "A4", autoFirstPage: true, bufferPages: true });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="audit-${new URL(lead.url).hostname}.pdf"`);
   doc.pipe(res);
 
-  // ── Helpers ──
-  const PASS  = [34, 197, 94];
-  const WARN  = [251, 146, 60];
-  const FAIL  = [239, 68, 68];
-  const INFO  = [99, 102, 241];
+  // ── Colour palette ──
+  const PASS  = [22, 163, 74];
+  const WARN  = [234, 88, 12];
+  const FAIL  = [220, 38, 38];
+  const BLUE  = [79, 70, 229];
   const DARK  = [15, 23, 42];
   const MID   = [51, 65, 85];
   const LIGHT = [100, 116, 139];
+  const BG    = [248, 250, 252];
+  const WHITE = [255, 255, 255];
 
   const scoreColor = (s) => s >= 70 ? PASS : s >= 40 ? WARN : FAIL;
 
-  const pageCheck = () => {
-    if (doc.y > 720) { doc.addPage(); }
+  const W = 595, ML = 50, MR = 50, CW = W - ML - MR; // page width, margins, content width
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const pageCheck = (needed = 60) => { if (doc.y > 842 - needed) doc.addPage(); };
+
+  const footer = () => {
+    const range = doc.bufferedPageRange();
+    for (let i = 0; i < range.count; i++) {
+      doc.switchToPage(range.start + i);
+      doc.rect(0, 820, W, 22).fill([234, 238, 245]);
+      doc.fillColor(LIGHT).fontSize(6.5).font("Helvetica")
+        .text(
+          `CONFIDENTIAL — Prepared by Zaram SEO PitchReady  ·  ${new Date().toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" })}  ·  Data source: Google PageSpeed Insights API  ·  Page ${i + 1} of ${range.count}`,
+          ML, 826, { width: CW, align: "center" }
+        );
+    }
   };
 
-  const section = (title) => {
-    pageCheck();
-    doc.moveDown(0.6);
-    doc.rect(50, doc.y, 495, 20).fill([241, 245, 249]);
-    doc.fillColor(DARK).fontSize(9).font("Helvetica-Bold")
-      .text(title.toUpperCase(), 56, doc.y - 15, { characterSpacing: 0.8 });
-    doc.moveDown(0.8);
-  };
-
-  // Status icon: PASS / WARN / FAIL
-  const statusTag = (x, y, status) => {
-    const colors = { PASS, WARN, FAIL };
-    const labels = { PASS: "PASS", WARN: "WARN", FAIL: "FAIL" };
-    const [r, g, b] = colors[status] || INFO;
-    doc.roundedRect(x, y, 34, 12, 3).fill([r, g, b]);
-    doc.fillColor([255,255,255]).fontSize(6.5).font("Helvetica-Bold")
-      .text(labels[status], x, y + 2.5, { width: 34, align: "center" });
-  };
-
-  // Checklist row
-  const checkRow = (label, status, value, note, indent = 50) => {
-    pageCheck();
+  // Section header bar
+  const section = (title, subtitle = "") => {
+    pageCheck(50);
+    doc.moveDown(0.7);
     const y = doc.y;
-    statusTag(indent, y, status);
+    doc.rect(ML, y, CW, subtitle ? 28 : 22).fill([234, 238, 245]);
+    doc.rect(ML, y, 4, subtitle ? 28 : 22).fill(BLUE);
     doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold")
-      .text(label, indent + 42, y, { width: 200 });
-    if (value) {
-      doc.fillColor(MID).fontSize(8).font("Helvetica")
-        .text(value, indent + 248, y, { width: 180, align: "right" });
-    }
-    if (note) {
+      .text(title.toUpperCase(), ML + 12, y + 5, { characterSpacing: 0.9, width: CW - 12 });
+    if (subtitle) {
       doc.fillColor(LIGHT).fontSize(7.5).font("Helvetica")
-        .text(note, indent + 42, doc.y, { width: 380 });
+        .text(subtitle, ML + 12, y + 17, { width: CW - 12 });
     }
-    doc.moveDown(note ? 0.55 : 0.45);
+    doc.y = y + (subtitle ? 28 : 22) + 8;
   };
 
-  // Score box
-  const drawScore = (x, y, label, score) => {
+  // PASS / WARN / FAIL badge
+  const badge = (x, y, status, w = 36) => {
+    const map = { PASS: [PASS, "PASS"], WARN: [WARN, "WARN"], FAIL: [FAIL, "FAIL"] };
+    const [col, lbl] = map[status] || [BLUE, status];
+    doc.roundedRect(x, y, w, 13, 3).fill(col);
+    doc.fillColor(WHITE).fontSize(6.5).font("Helvetica-Bold")
+      .text(lbl, x, y + 3, { width: w, align: "center" });
+  };
+
+  // Full audit row: badge + bold title + plain-English explanation + optional measurement
+  const auditRow = (status, title, explain, measure = "") => {
+    pageCheck(50);
+    const y = doc.y;
+    badge(ML, y, status);
+    // title
+    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold")
+      .text(title, ML + 44, y, { width: 330, lineBreak: false });
+    // measurement right-aligned
+    if (measure) {
+      const mCol = status === "PASS" ? PASS : status === "WARN" ? WARN : FAIL;
+      doc.fillColor(mCol).fontSize(8).font("Helvetica-Bold")
+        .text(measure, ML + 44 + 330, y, { width: CW - 44 - 330, align: "right" });
+    }
+    doc.y = y + 14;
+    // plain-English explanation
+    if (explain) {
+      doc.fillColor(MID).fontSize(8).font("Helvetica")
+        .text(explain, ML + 44, doc.y, { width: CW - 44 });
+    }
+    doc.moveDown(0.65);
+  };
+
+  // Score card (smaller, 4 across)
+  const scoreCard = (x, y, label, sublabel, score) => {
     const [r, g, b] = scoreColor(score);
-    doc.roundedRect(x, y, 112, 58, 6).fill([r, g, b, 0.08]);
-    doc.roundedRect(x, y, 112, 58, 6).strokeColor([r, g, b]).lineWidth(1.5).stroke();
-    doc.fillColor([r, g, b]).fontSize(24).font("Helvetica-Bold")
-      .text(score > 0 ? score : "N/A", x, y + 9, { width: 112, align: "center" });
-    doc.fillColor(LIGHT).fontSize(7.5).font("Helvetica")
-      .text(label, x, y + 40, { width: 112, align: "center" });
+    const h = 64;
+    doc.roundedRect(x, y, 114, h, 6).fill([r, g, b, 0.07]);
+    doc.roundedRect(x, y, 114, h, 6).strokeColor([r, g, b]).lineWidth(1.2).stroke();
+    doc.fillColor([r, g, b]).fontSize(26).font("Helvetica-Bold")
+      .text(score > 0 ? score : "N/A", x, y + 8, { width: 114, align: "center" });
+    doc.fillColor(DARK).fontSize(7.5).font("Helvetica-Bold")
+      .text(label, x, y + 42, { width: 114, align: "center" });
+    doc.fillColor(LIGHT).fontSize(6.5).font("Helvetica")
+      .text(sublabel, x, y + 53, { width: 114, align: "center" });
   };
 
-  // ── PAGE 1: HEADER ──────────────────────────────────────────────────────────
-  doc.rect(0, 0, 595, 100).fill(DARK);
-  // accent stripe
-  doc.rect(0, 0, 6, 100).fill(INFO);
+  // Callout box (coloured background info block)
+  const callout = (x, y, w, h, col, text, textCol = WHITE) => {
+    doc.roundedRect(x, y, w, h, 6).fill(col);
+    doc.fillColor(textCol).fontSize(8.5).font("Helvetica")
+      .text(text, x + 12, y + 10, { width: w - 24 });
+    return y + h;
+  };
 
-  doc.fillColor(INFO).fontSize(8).font("Helvetica-Bold")
-    .text("ZARAM SEO PITCHREADY  ·  WEBSITE AUDIT REPORT", 20, 20, { characterSpacing: 1.5 });
+  // ════════════════════════════════════════════════════════════════════════════
+  // PAGE 1 — EXECUTIVE SUMMARY
+  // ════════════════════════════════════════════════════════════════════════════
 
-  const titleStr = (lead.title || lead.url).slice(0, 65);
-  doc.fillColor([255,255,255]).fontSize(17).font("Helvetica-Bold")
-    .text(titleStr, 20, 34);
+  // Dark header band
+  doc.rect(0, 0, W, 108).fill(DARK);
+  doc.rect(0, 0, 5, 108).fill(BLUE);
 
-  doc.fillColor([148, 163, 184]).fontSize(8.5).font("Helvetica")
-    .text(lead.url, 20, 58);
+  doc.fillColor(BLUE).fontSize(7.5).font("Helvetica-Bold")
+    .text("WEBSITE PERFORMANCE & SEO AUDIT REPORT", ML, 18, { characterSpacing: 1.4 });
+
+  const titleStr = (lead.title || new URL(lead.url).hostname).slice(0, 62);
+  doc.fillColor(WHITE).fontSize(18).font("Helvetica-Bold").text(titleStr, ML, 32);
+  doc.fillColor([148, 163, 184]).fontSize(8).font("Helvetica").text(lead.url, ML, 56);
 
   const ctrMap = { 1:"~28%", 2:"~6%", 3:"~3%", 4:"~2%", 5:"~1.5%" };
   const ctr = ctrMap[lead.googlePage] || "<1%";
-  doc.fillColor([167, 139, 250]).fontSize(8.5).font("Helvetica-Bold")
-    .text(`Found on Google PAGE ${lead.googlePage}  ·  Estimated click share: ${ctr}  ·  Audit: ${new Date().toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })}`,
-      20, 74, { characterSpacing: 0.3 });
+  const auditDate = new Date().toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" });
+  doc.fillColor([167, 139, 250]).fontSize(8).font("Helvetica-Bold")
+    .text(`Found on Google PAGE ${lead.googlePage}  ·  Estimated click-through rate at this position: ${ctr}  ·  Audit date: ${auditDate}`,
+      ML, 72, { characterSpacing: 0.2 });
 
-  doc.y = 118;
+  doc.y = 120;
 
-  // ── OVERALL SCORE SUMMARY ────────────────────────────────────────────────────
-  // Count total checks passed
+  // ── Overall grade + summary ──
   const checks = [
-    lead.hasSSL, lead.hasH1, lead.metaDescLength > 0, lead.metaTitleLength >= 30 && lead.metaTitleLength <= 60,
-    lead.sitemapFound, lead.robotsTxtFound, lead.hasCanonical, lead.hasSchema, lead.hasViewport, lead.hasOgTags,
-    lead.h2Count > 0, lead.imagesWithAlt === lead.imagesTotal && lead.imagesTotal > 0,
+    lead.hasSSL, lead.hasH1, lead.metaDescLength > 0,
+    lead.metaTitleLength >= 30 && lead.metaTitleLength <= 60,
+    lead.sitemapFound, lead.robotsTxtFound, lead.hasCanonical, lead.hasSchema,
+    lead.hasViewport, lead.hasOgTags, lead.h2Count >= 2,
+    lead.imagesWithAlt === lead.imagesTotal && lead.imagesTotal > 0,
     lead.wordCount >= 300, lead.internalLinks >= 3,
     lead.mobileScore >= 70, lead.seoScore >= 70,
   ];
   const passed = checks.filter(Boolean).length;
-  const total = checks.length;
-  const grade = passed >= 14 ? "A" : passed >= 11 ? "B" : passed >= 8 ? "C" : passed >= 5 ? "D" : "F";
-  const gradeColor = passed >= 14 ? PASS : passed >= 11 ? WARN : FAIL;
+  const total  = checks.length;
+  const failed = total - passed;
+  const grade  = passed >= 14 ? "A" : passed >= 11 ? "B" : passed >= 8 ? "C" : passed >= 5 ? "D" : "F";
+  const [gr, gg, gb] = passed >= 14 ? PASS : passed >= 11 ? WARN : FAIL;
 
-  // Grade box
-  doc.roundedRect(50, doc.y, 80, 70, 8).fill(gradeColor);
-  doc.fillColor([255,255,255]).fontSize(36).font("Helvetica-Bold")
-    .text(grade, 50, doc.y + 10, { width: 80, align: "center" });
-  doc.fillColor([255,255,255]).fontSize(7.5).font("Helvetica")
-    .text("OVERALL GRADE", 50, doc.y + 50, { width: 80, align: "center" });
+  const gradeY = doc.y;
+  // Grade circle
+  doc.circle(ML + 36, gradeY + 36, 36).fill([gr, gg, gb]);
+  doc.fillColor(WHITE).fontSize(34).font("Helvetica-Bold")
+    .text(grade, ML, gradeY + 16, { width: 72, align: "center" });
+  doc.fillColor(WHITE).fontSize(6).font("Helvetica-Bold")
+    .text("GRADE", ML, gradeY + 56, { width: 72, align: "center" });
 
-  const summY = doc.y;
-  doc.fillColor(DARK).fontSize(10).font("Helvetica-Bold")
-    .text(`${passed} of ${total} checks passed`, 145, summY + 8);
-  doc.fillColor(LIGHT).fontSize(8.5).font("Helvetica")
-    .text(`This site has ${total - passed} issue${total - passed !== 1 ? "s" : ""} that need attention to improve its Google ranking.`, 145, summY + 26, { width: 350 });
+  // Summary text
+  const gradeMeaning = {
+    A: "This site is in good shape — a few optimisations will push it to the top.",
+    B: "Solid foundation with some gaps. Fixing the highlighted issues could move it to page 1.",
+    C: "Moderate issues are holding this site back from page 1. Each fix directly improves ranking.",
+    D: "Significant problems are preventing this site from competing. Without fixes, it will stay buried.",
+    F: "Critical issues are blocking this site from ranking. Competitors are winning every search it should appear for.",
+  };
+  const gradeLabel = { A:"Excellent", B:"Good", C:"Needs Work", D:"Poor", F:"Critical" };
 
-  // mini bar
-  const barX = 145, barY = summY + 48, barW = 350;
-  doc.roundedRect(barX, barY, barW, 8, 4).fill([226,232,240]);
-  doc.roundedRect(barX, barY, Math.round(barW * passed / total), 8, 4).fill(gradeColor);
+  doc.fillColor(DARK).fontSize(13).font("Helvetica-Bold")
+    .text(`${gradeLabel[grade]} — ${passed}/${total} checks passed`, ML + 84, gradeY + 4);
+  doc.fillColor(MID).fontSize(8.5).font("Helvetica")
+    .text(gradeMeaning[grade], ML + 84, gradeY + 24, { width: CW - 84 });
 
-  doc.y = summY + 80;
+  // Progress bar
+  const barY2 = gradeY + 50, barW = CW - 84;
+  doc.roundedRect(ML + 84, barY2, barW, 9, 4).fill([226, 232, 240]);
+  doc.roundedRect(ML + 84, barY2, Math.round(barW * passed / total), 9, 4).fill([gr, gg, gb]);
+  doc.fillColor(LIGHT).fontSize(7).font("Helvetica")
+    .text(`${failed} issue${failed !== 1 ? "s" : ""} found`, ML + 84, barY2 + 12);
 
-  // ── PERFORMANCE SCORES ───────────────────────────────────────────────────────
-  section("Performance Scores  (Google PageSpeed Insights)");
-  const sy = doc.y;
-  drawScore(50,  sy, "Mobile Speed",  lead.mobileScore  || 0);
-  drawScore(172, sy, "Desktop Speed", lead.desktopScore || 0);
-  drawScore(294, sy, "SEO Score",     lead.seoScore     || 0);
-  drawScore(416, sy, "Accessibility", lead.accessibilityScore || 0);
-  doc.y = sy + 68;
+  doc.y = gradeY + 80;
 
-  // ── CORE WEB VITALS ──────────────────────────────────────────────────────────
-  section("Core Web Vitals");
+  // ── Business impact callout ──
+  const ctrLost = lead.googlePage >= 3 ? "97" : lead.googlePage === 2 ? "94" : "72";
+  const impactText =
+    `RIGHT NOW: ${ctrLost}% of people searching for this business's services on Google never see this website — because it is buried on page ${lead.googlePage}. ` +
+    `The businesses appearing on page 1 are receiving those calls, bookings, and enquiries instead. ` +
+    `The ${failed} issue${failed !== 1 ? "s" : ""} identified in this report are the specific reasons why this site is not ranking higher. ` +
+    `Each one fixed is a step closer to page 1.`;
+  const impactH = 12 + Math.ceil(impactText.length / 90) * 11 + 10;
+  callout(ML, doc.y, CW, impactH, [30, 41, 59], impactText);
+  doc.y += impactH + 12;
+
+  // ── Performance score cards ──
+  section("Google Performance Scores", "Measured by Google PageSpeed Insights — the same tool Google uses to evaluate sites for ranking");
+  const scY = doc.y;
+  scoreCard(ML,       scY, "Mobile Speed",   "How fast on phones",    lead.mobileScore  || 0);
+  scoreCard(ML + 122, scY, "Desktop Speed",  "How fast on computers", lead.desktopScore || 0);
+  scoreCard(ML + 244, scY, "SEO Score",      "Google readability",    lead.seoScore     || 0);
+  scoreCard(ML + 366, scY, "Accessibility",  "Usability for all",     lead.accessibilityScore || 0);
+  doc.y = scY + 76;
+
+  // Score legend
+  doc.fillColor(LIGHT).fontSize(7.5).font("Helvetica")
+    .text("Score guide:  ", ML, doc.y, { continued: true });
+  doc.fillColor(PASS).text("90–100 = Excellent  ", { continued: true });
+  doc.fillColor(WARN).text("50–89 = Needs Improvement  ", { continued: true });
+  doc.fillColor(FAIL).text("0–49 = Poor (hurting rankings)", { continued: false });
+  doc.moveDown(0.8);
+
+  // ── Core Web Vitals ──
+  section("Page Speed Breakdown (Core Web Vitals)", "Google officially uses these 5 metrics to decide your ranking position. Slow = lower rank.");
+
   const vitals = [
-    ["Largest Contentful Paint (LCP)", lead.lcp, "< 2.5s is good", !lead.lcp || lead.lcp === "N/A" ? "WARN" : parseFloat(lead.lcp) <= 2.5 ? "PASS" : parseFloat(lead.lcp) <= 4 ? "WARN" : "FAIL"],
-    ["First Contentful Paint (FCP)",   lead.fcp, "< 1.8s is good", !lead.fcp || lead.fcp === "N/A" ? "WARN" : parseFloat(lead.fcp) <= 1.8 ? "PASS" : parseFloat(lead.fcp) <= 3 ? "WARN" : "FAIL"],
-    ["Total Blocking Time (TBT)",      lead.tbt, "< 200ms is good", !lead.tbt || lead.tbt === "N/A" ? "WARN" : parseInt(lead.tbt) <= 200 ? "PASS" : parseInt(lead.tbt) <= 600 ? "WARN" : "FAIL"],
-    ["Cumulative Layout Shift (CLS)",  lead.cls, "< 0.1 is good",  !lead.cls || lead.cls === "N/A" ? "WARN" : parseFloat(lead.cls) <= 0.1 ? "PASS" : parseFloat(lead.cls) <= 0.25 ? "WARN" : "FAIL"],
-    ["Time to Interactive (TTI)",      lead.tti, "< 3.8s is good", !lead.tti || lead.tti === "N/A" ? "WARN" : parseFloat(lead.tti) <= 3.8 ? "PASS" : parseFloat(lead.tti) <= 7.3 ? "WARN" : "FAIL"],
+    {
+      name: "Largest Contentful Paint (LCP)", val: lead.lcp,
+      explain: "How long it takes for the main content of your page to fully appear. If this is slow, visitors stare at a blank or partial screen before they can read anything — most will leave and go to a competitor.",
+      benchmark: "Under 2.5s = good",
+      status: !lead.lcp || lead.lcp === "N/A" ? "WARN" : parseFloat(lead.lcp) <= 2.5 ? "PASS" : parseFloat(lead.lcp) <= 4 ? "WARN" : "FAIL",
+    },
+    {
+      name: "First Contentful Paint (FCP)", val: lead.fcp,
+      explain: "The moment your page starts showing anything at all. People judge a website in under a second — a slow FCP means a bad first impression before a single word is read.",
+      benchmark: "Under 1.8s = good",
+      status: !lead.fcp || lead.fcp === "N/A" ? "WARN" : parseFloat(lead.fcp) <= 1.8 ? "PASS" : parseFloat(lead.fcp) <= 3 ? "WARN" : "FAIL",
+    },
+    {
+      name: "Total Blocking Time (TBT)", val: lead.tbt,
+      explain: "How long the page is frozen and unresponsive after it loads. During this time, visitors can tap buttons or links and nothing happens — they think the site is broken and leave.",
+      benchmark: "Under 200ms = good",
+      status: !lead.tbt || lead.tbt === "N/A" ? "WARN" : parseInt(lead.tbt) <= 200 ? "PASS" : parseInt(lead.tbt) <= 600 ? "WARN" : "FAIL",
+    },
+    {
+      name: "Cumulative Layout Shift (CLS)", val: lead.cls,
+      explain: "How much the page jumps and rearranges while loading. A high score means text or buttons visually shift — visitors click the wrong thing, or simply lose trust in the site.",
+      benchmark: "Under 0.1 = good",
+      status: !lead.cls || lead.cls === "N/A" ? "WARN" : parseFloat(lead.cls) <= 0.1 ? "PASS" : parseFloat(lead.cls) <= 0.25 ? "WARN" : "FAIL",
+    },
+    {
+      name: "Time to Interactive (TTI)", val: lead.tti,
+      explain: "How long before a visitor can actually use the site — click a button, dial a phone number, or fill a contact form. Delays here directly cost the business enquiries.",
+      benchmark: "Under 3.8s = good",
+      status: !lead.tti || lead.tti === "N/A" ? "WARN" : parseFloat(lead.tti) <= 3.8 ? "PASS" : parseFloat(lead.tti) <= 7.3 ? "WARN" : "FAIL",
+    },
   ];
-  vitals.forEach(([name, val, note, status]) => {
-    checkRow(name, status, val || "N/A", note);
+
+  vitals.forEach(v => {
+    auditRow(v.status, v.name, v.explain, v.val ? `${v.val}  (${v.benchmark})` : `N/A — ${v.benchmark}`);
   });
 
-  // ── ON-PAGE SEO CHECKLIST ────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  // PAGE 2 — SEO & TECHNICAL AUDIT
+  // ════════════════════════════════════════════════════════════════════════════
   doc.addPage();
-  section("On-Page SEO Checklist");
+
+  // ── On-Page SEO ──
+  section("On-Page SEO Findings", "These are the signals Google reads on the page itself to decide what you rank for and how trustworthy your site is.");
 
   // SSL
-  checkRow("SSL / HTTPS", lead.hasSSL ? "PASS" : "FAIL",
-    lead.hasSSL ? "Secure" : "NOT SECURE",
-    lead.hasSSL ? "Site is served over HTTPS" : "Site is HTTP — Google marks it insecure and demotes it in rankings");
+  auditRow(
+    lead.hasSSL ? "PASS" : "FAIL",
+    "SSL Security Certificate (HTTPS)",
+    lead.hasSSL
+      ? "The site is secure (HTTPS). Google confirms this as a ranking factor and visitors see a padlock in their browser, building trust."
+      : "The site runs on HTTP — every visitor's browser shows a 'Not Secure' warning. Google actively penalises unsecured sites in rankings. Many people will immediately leave a site with this warning, especially before booking or buying anything.",
+    lead.hasSSL ? "Secure ✓" : "NOT SECURE"
+  );
 
   // Page Title
   const titleStatus = lead.metaTitleLength >= 30 && lead.metaTitleLength <= 60 ? "PASS"
     : lead.metaTitleLength > 0 ? "WARN" : "FAIL";
-  checkRow("Page Title (meta title)", titleStatus,
-    lead.metaTitleLength > 0 ? `${lead.metaTitleLength} chars` : "Missing",
-    lead.pageTitle ? `"${lead.pageTitle.slice(0, 70)}"` : "No title tag found — critical for rankings and click-through rate");
+  auditRow(
+    titleStatus,
+    "Page Title Tag",
+    lead.metaTitleLength === 0
+      ? "No page title was found. The page title is the clickable blue headline people see in Google search results. Without it, Google writes one automatically — usually something generic that very few people click."
+      : lead.metaTitleLength < 30
+        ? `The title is too short at ${lead.metaTitleLength} characters. It should include the main service keyword and the business location. Short titles miss ranking opportunities.`
+        : lead.metaTitleLength > 60
+          ? `At ${lead.metaTitleLength} characters, the title is too long — Google cuts it off mid-sentence in search results, making it look unprofessional and reducing click-through rates.`
+          : `Title is well-optimised at ${lead.metaTitleLength} characters.${lead.pageTitle ? ' Current title: "' + lead.pageTitle.slice(0, 80) + '"' : ""}`,
+    lead.metaTitleLength > 0 ? `${lead.metaTitleLength} chars` : "Missing"
+  );
 
   // Meta Description
   const descStatus = lead.metaDescLength >= 120 && lead.metaDescLength <= 160 ? "PASS"
     : lead.metaDescLength > 0 ? "WARN" : "FAIL";
-  checkRow("Meta Description", descStatus,
-    lead.metaDescLength > 0 ? `${lead.metaDescLength} chars` : "Missing",
-    lead.metaDesc ? `"${lead.metaDesc.slice(0, 100)}${lead.metaDesc.length > 100 ? "…" : ""}"` : "No meta description — affects how the site appears in Google results");
+  auditRow(
+    descStatus,
+    "Meta Description",
+    lead.metaDescLength === 0
+      ? "No meta description found. This is the 2-line preview that appears under the business name in Google results. Without one, Google picks random sentences from the page — often something that makes no sense out of context. A good description is what convinces someone to click your link over the one above or below it."
+      : lead.metaDescLength < 120
+        ? `The description is too short (${lead.metaDescLength} chars). At this length, Google may rewrite it with something less persuasive.`
+        : lead.metaDescLength > 160
+          ? `The description is too long (${lead.metaDescLength} chars) and will be cut off in Google results. Shorten it to under 160 characters.`
+          : "Meta description is a good length and will display fully in Google results.",
+    lead.metaDescLength > 0 ? `${lead.metaDescLength} chars` : "Missing"
+  );
 
   // H1
   const h1Status = lead.h1Count === 1 ? "PASS" : lead.h1Count > 1 ? "WARN" : "FAIL";
-  checkRow("H1 Heading", h1Status,
-    lead.h1Count > 0 ? `${lead.h1Count} found` : "Missing",
-    lead.h1Text ? `"${lead.h1Text}"` : "No H1 heading on homepage — Google uses this as the main topic signal");
+  auditRow(
+    h1Status,
+    "H1 Main Heading",
+    lead.h1Count === 0
+      ? "No H1 heading was found on the homepage. The H1 is the main headline of a page — it tells Google exactly what this business does and who it serves. Without it, Google has to guess, and often gets it wrong, showing the site to the wrong audience or not at all."
+      : lead.h1Count > 1
+        ? `${lead.h1Count} H1 headings were found. There should be exactly one — multiple H1s confuse Google about the page's main topic.${lead.h1Text ? ' Main H1: "' + lead.h1Text.slice(0, 80) + '"' : ""}`
+        : `H1 is present and well-structured.${lead.h1Text ? ' Heading: "' + lead.h1Text.slice(0, 80) + '"' : ""}`,
+    lead.h1Count > 0 ? `${lead.h1Count} found` : "Missing"
+  );
 
-  // H2/H3
+  // Headings
   const headingStatus = lead.h2Count >= 2 ? "PASS" : lead.h2Count > 0 ? "WARN" : "FAIL";
-  checkRow("Heading Structure (H2/H3)", headingStatus,
-    `${lead.h2Count} H2s, ${lead.h3Count} H3s`,
-    lead.h2Count < 2 ? "Too few subheadings — content is hard to read and harder for Google to understand" : "Good heading structure helps Google index content topics");
+  auditRow(
+    headingStatus,
+    "Content Structure (H2 & H3 Subheadings)",
+    lead.h2Count < 2
+      ? `Only ${lead.h2Count} H2 subheadings found. Well-organised content with clear sections (like a well-written article) consistently outranks walls of text. Google uses subheadings to understand the range of topics on a page — fewer subheadings means fewer ranking opportunities.`
+      : `Good heading structure with ${lead.h2Count} H2 and ${lead.h3Count} H3 subheadings. This helps Google index the range of services and topics covered.`,
+    `${lead.h2Count} H2s · ${lead.h3Count} H3s`
+  );
 
-  // Images alt
+  // Images
   const altStatus = lead.imagesTotal === 0 ? "WARN"
     : lead.imagesWithAlt === lead.imagesTotal ? "PASS"
     : lead.imagesWithAlt >= lead.imagesTotal * 0.7 ? "WARN" : "FAIL";
-  checkRow("Image Alt Text", altStatus,
-    lead.imagesTotal > 0 ? `${lead.imagesWithAlt} of ${lead.imagesTotal} images` : "No images found",
-    lead.imagesWithAlt < lead.imagesTotal ? `${lead.imagesTotal - lead.imagesWithAlt} image(s) have no alt text — missed SEO signal and fails accessibility` : "All images have alt text");
+  auditRow(
+    altStatus,
+    "Image Alt Text",
+    lead.imagesTotal === 0
+      ? "No images were found on the page. Images with descriptive alt text help Google understand your content and can bring in traffic through Google Image Search."
+      : lead.imagesWithAlt === lead.imagesTotal
+        ? "All images have descriptive alt text — Google can read and rank these images."
+        : `${lead.imagesTotal - lead.imagesWithAlt} of ${lead.imagesTotal} images have no alt text. Images are invisible to Google without descriptions — this is a missed SEO opportunity. It also makes the site inaccessible to visually impaired users.`,
+    lead.imagesTotal > 0 ? `${lead.imagesWithAlt}/${lead.imagesTotal} images` : "None found"
+  );
 
   // Word count
   const wordStatus = lead.wordCount >= 600 ? "PASS" : lead.wordCount >= 300 ? "WARN" : "FAIL";
-  checkRow("Homepage Word Count", wordStatus,
-    `~${lead.wordCount} words`,
-    lead.wordCount < 300 ? "Very thin content — Google needs enough text to understand what the page is about (aim for 400+ words)"
-    : lead.wordCount < 600 ? "Acceptable but light — more relevant content helps rankings" : "Good content depth");
+  auditRow(
+    wordStatus,
+    "Content Volume (Word Count)",
+    lead.wordCount < 300
+      ? `The homepage has only ~${lead.wordCount} words — this is very thin content. Google needs enough text to understand what the business does, where it operates, and who it serves. Pages with thin content rarely rank on page 1. Competitors with 500–1000 words of relevant content will consistently outrank this site.`
+      : lead.wordCount < 600
+        ? `~${lead.wordCount} words is acceptable but on the lighter side. Adding more detail about services, location, and customer benefits would strengthen rankings.`
+        : `Good content volume at ~${lead.wordCount} words. More content gives Google more signals and more ways to match this page to searches.`,
+    `~${lead.wordCount} words`
+  );
 
   // Internal links
   const linkStatus = lead.internalLinks >= 5 ? "PASS" : lead.internalLinks >= 2 ? "WARN" : "FAIL";
-  checkRow("Internal Links", linkStatus,
-    `${lead.internalLinks} internal links`,
-    lead.internalLinks < 3 ? "Very few internal links — site structure is poor, Google struggles to crawl and rank all pages" : "Helps Google crawl the site and distributes ranking power");
+  auditRow(
+    linkStatus,
+    "Internal Links (Links Between Pages)",
+    lead.internalLinks < 3
+      ? `Only ${lead.internalLinks} internal link${lead.internalLinks !== 1 ? "s" : ""} found. Internal links are the roads Google follows to discover and rank every page on the site. Without them, pages like the Services page, Contact page, and About page may never be properly indexed — they exist but Google can't find them.`
+      : `${lead.internalLinks} internal links found. Good site structure helps Google crawl every page and distributes ranking authority across the site.`,
+    `${lead.internalLinks} links`
+  );
 
-  // ── TECHNICAL SEO CHECKLIST ──────────────────────────────────────────────────
-  section("Technical SEO Checklist");
+  // ── Technical SEO ──
+  section("Technical SEO Findings", "Behind-the-scenes settings that affect whether Google can access, understand, and rank this site.");
 
-  checkRow("XML Sitemap (/sitemap.xml)", lead.sitemapFound ? "PASS" : "FAIL",
-    lead.sitemapFound ? "Found" : "Not found",
-    lead.sitemapFound ? "Sitemap is present — helps Google discover all pages" : "No sitemap — Google may miss pages entirely. Submit one via Google Search Console");
+  // Sitemap
+  auditRow(
+    lead.sitemapFound ? "PASS" : "FAIL",
+    "XML Sitemap (/sitemap.xml)",
+    lead.sitemapFound
+      ? "A sitemap was found. This is a direct list of every page on the site given to Google — it ensures nothing gets missed."
+      : "No XML sitemap found. A sitemap is essentially a map that tells Google every page this site has. Without one, Google has to discover pages by following links — and may never find newer or less-linked pages. Any service page or location page that isn't in a sitemap may never rank.",
+    lead.sitemapFound ? "Found ✓" : "Missing"
+  );
 
-  checkRow("Robots.txt (/robots.txt)", lead.robotsTxtFound ? "PASS" : "WARN",
-    lead.robotsTxtFound ? "Found" : "Not found",
-    lead.robotsTxtFound ? "Robots.txt is present" : "No robots.txt — not critical but best practice to have one");
+  auditRow(
+    lead.robotsTxtFound ? "PASS" : "WARN",
+    "Robots.txt File",
+    lead.robotsTxtFound
+      ? "Robots.txt file is present, directing how search engines should crawl the site."
+      : "No robots.txt file found. While not critical, this file gives Google instructions on how to crawl the site efficiently. Its absence can lead to Google wasting time on unimportant pages instead of indexing key ones.",
+    lead.robotsTxtFound ? "Found ✓" : "Missing"
+  );
 
-  checkRow("Canonical Tag", lead.hasCanonical ? "PASS" : "WARN",
-    lead.hasCanonical ? "Present" : "Missing",
-    lead.hasCanonical ? "Canonical tag present — prevents duplicate content issues" : "No canonical tag — if content is duplicated, Google may index the wrong version");
+  auditRow(
+    lead.hasViewport ? "PASS" : "FAIL",
+    "Mobile Viewport Meta Tag",
+    lead.hasViewport
+      ? "Viewport tag is present — the site is configured to display correctly on mobile devices."
+      : "No mobile viewport tag found. Without this, the site will appear as a tiny, zoomed-out desktop page on a mobile phone. Since over 65% of local business searches happen on mobile, this is likely causing visitors to leave immediately without contacting the business.",
+    lead.hasViewport ? "Present ✓" : "Missing"
+  );
 
-  checkRow("Structured Data / Schema", lead.hasSchema ? "PASS" : "WARN",
-    lead.hasSchema ? "Detected" : "Not found",
-    lead.hasSchema ? "Schema markup found — helps Google show rich results (stars, FAQs, etc.)" : "No schema markup — missing rich result opportunities (reviews, business hours, etc.)");
+  auditRow(
+    lead.hasSchema ? "PASS" : "WARN",
+    "Schema Markup (Structured Data)",
+    lead.hasSchema
+      ? "Schema markup detected. This tells Google this is a local business — enabling rich results like star ratings, opening hours, and contact details to appear directly in Google search results."
+      : "No schema markup found. Schema is invisible code that tells Google 'this is a local business with these services, hours, and location.' With schema, businesses can appear with rich snippets in search results — star ratings, phone numbers, business hours — all visible before anyone clicks. Without it, this business appears as a plain blue link while competitors may show rich info.",
+    lead.hasSchema ? "Detected ✓" : "Not found"
+  );
 
-  checkRow("Mobile Viewport Meta Tag", lead.hasViewport ? "PASS" : "FAIL",
-    lead.hasViewport ? "Present" : "Missing",
-    lead.hasViewport ? "Viewport tag present" : "No viewport tag — site will not display correctly on mobile phones");
+  auditRow(
+    lead.hasCanonical ? "PASS" : "WARN",
+    "Canonical Tags",
+    lead.hasCanonical
+      ? "Canonical tags are present — preventing duplicate content issues that could split ranking authority."
+      : "No canonical tags found. Without these, Google may discover and index multiple versions of the same page (e.g. http vs https, www vs non-www, or with and without trailing slashes). This splits the ranking power between versions, weakening all of them — instead of one strong page, there are several weak versions competing against each other.",
+    lead.hasCanonical ? "Present ✓" : "Missing"
+  );
 
-  checkRow("Open Graph / Social Tags", lead.hasOgTags ? "PASS" : "WARN",
-    lead.hasOgTags ? "Present" : "Missing",
-    lead.hasOgTags ? "OG tags found — shared links will display correctly on social media" : "No Open Graph tags — links shared on Facebook/WhatsApp won't show image or title preview");
+  auditRow(
+    lead.hasOgTags ? "PASS" : "WARN",
+    "Open Graph / Social Preview Tags",
+    lead.hasOgTags
+      ? "Open Graph tags are present. When this site is shared on Facebook, WhatsApp, or Instagram, it shows a proper image, title, and description preview."
+      : "No Open Graph tags found. When someone shares this website on WhatsApp, Facebook, or Instagram, it appears as a plain, unformatted link with no image, no title, and no description — it looks like a spam link. OG tags make shared links look professional and get far more clicks.",
+    lead.hasOgTags ? "Present ✓" : "Missing"
+  );
 
-  // ── PERFORMANCE ISSUES FROM PAGESPEED ────────────────────────────────────────
+  // ── PageSpeed issues ──
   if (lead.issues && lead.issues.length) {
-    section("Performance Issues Detected");
-    lead.issues.forEach((issue) => {
-      pageCheck();
-      const y = doc.y;
-      statusTag(50, y, "FAIL");
-      doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold")
-        .text(issue.label, 92, y, { width: 340 });
-      if (issue.detail) {
-        doc.fillColor(LIGHT).fontSize(8).font("Helvetica").text(issue.detail, 92, doc.y, { width: 380 });
-      }
-      doc.moveDown(issue.detail ? 0.55 : 0.45);
+    const psExplain = {
+      "No SSL / HTTPS": "Browsers actively warn visitors with a 'Not Secure' label. Many people will not proceed past this warning.",
+      "Missing meta description": "Google picks random text to show under this site in search results — usually something unhelpful that reduces clicks.",
+      "Missing or poor page title": "Without a clear title, Google doesn't know what to rank this page for.",
+      "Images missing alt text": "Google cannot read images without descriptions — missed SEO and accessibility opportunity.",
+      "Poor link anchor text": "Vague link text like 'click here' tells Google nothing. Descriptive links pass context and ranking signals.",
+      "Tap targets too small on mobile": "Buttons and links are too close together on phones — visitors accidentally tap the wrong thing and leave.",
+      "Text too small to read on mobile": "If visitors need to pinch-zoom to read text on their phone, they will leave. Mobile readability is a confirmed ranking factor.",
+      "No mobile viewport meta tag": "The site appears broken on mobile phones — extremely damaging given how many local searches happen on phones.",
+      "Render-blocking resources slowing load": "CSS or JavaScript files are forcing the page to pause before displaying anything — visitors see a blank screen longer than necessary.",
+      "Images not compressed/optimized": "Oversized image files are a leading cause of slow load times — directly reducing the mobile speed score Google measures.",
+      "Images not in modern format (WebP/AVIF)": "Older image formats (JPEG/PNG) are 2-5x larger than modern formats. Switching reduces page size and improves speed score.",
+      "Unused CSS adding page weight": "Stylesheet code that isn't used on this page is still being downloaded, slowing the site for no reason.",
+      "Unused JavaScript adding page weight": "JavaScript that isn't needed on this page is loading anyway — a common cause of slow, unresponsive pages.",
+      "No Gzip/Brotli text compression": "The server is sending full-size text files instead of compressed versions. Compression can reduce file sizes by 60-80%, significantly speeding up load times.",
+      "Slow server response time (TTFB)": "The server itself is responding slowly before any content is even sent to the visitor's browser — often a hosting issue.",
+      "Server response time too high": "The web server is taking too long to respond to requests — every visitor experiences this delay before seeing anything.",
+      "DOM too large — too many HTML elements": "The page has too many HTML elements, making it slow to render and respond to clicks. Often caused by bloated page builders.",
+      "Animated GIFs — should be video": "Animated GIF files are extremely large. Converting them to video format (MP4/WebM) can reduce file size by over 90%.",
+    };
+    section("Speed & Performance Issues", "Specific problems identified by Google's tools that are slowing this site down and hurting its ranking.");
+    lead.issues.forEach(issue => {
+      const explain = psExplain[issue.label] || "";
+      auditRow("FAIL", issue.label, explain + (issue.detail ? `  Measured: ${issue.detail}` : ""));
     });
   }
 
-  // ── CONTACT INFO ──────────────────────────────────────────────────────────────
-  section("Contact Information Found on Site");
-  if (lead.emails.length) {
-    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Email addresses:");
-    lead.emails.forEach((e) => {
-      doc.fillColor(INFO).fontSize(8.5).font("Helvetica").text("  " + e);
-    });
-    doc.moveDown(0.3);
-  }
-  if (lead.phones.length) {
-    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Phone numbers:");
-    lead.phones.slice(0, 3).forEach((p) => {
-      doc.fillColor(MID).fontSize(8.5).font("Helvetica").text("  " + p);
-    });
-    doc.moveDown(0.3);
-  }
-  if (lead.facebookUrl) {
-    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Facebook page:");
-    doc.fillColor([59, 130, 246]).fontSize(8.5).font("Helvetica").text("  " + lead.facebookUrl);
-    doc.moveDown(0.3);
-  }
-  if (!lead.emails.length && !lead.phones.length) {
-    doc.fillColor(LIGHT).fontSize(8.5).font("Helvetica").text("No contact details found on public pages.");
-  }
-  doc.moveDown(0.4);
+  // ════════════════════════════════════════════════════════════════════════════
+  // PAGE 3 — ACTION PLAN
+  // ════════════════════════════════════════════════════════════════════════════
+  doc.addPage();
 
-  // ── PRIORITY RECOMMENDATIONS ──────────────────────────────────────────────────
-  section("Priority Action List");
+  // Header
+  doc.rect(0, 0, W, 70).fill(DARK);
+  doc.rect(0, 0, 5, 70).fill(BLUE);
+  doc.fillColor(BLUE).fontSize(7.5).font("Helvetica-Bold")
+    .text("PRIORITY ACTION PLAN", ML, 18, { characterSpacing: 1.4 });
+  doc.fillColor(WHITE).fontSize(15).font("Helvetica-Bold")
+    .text("What Needs to Be Fixed — In Order of Urgency", ML, 32);
+  doc.fillColor([148, 163, 184]).fontSize(8).font("Helvetica")
+    .text("Issues are ranked by how directly they are costing this business Google rankings and customers.", ML, 54);
+  doc.y = 84;
+
   const recs = [
-    !lead.hasSSL          && { sev:"CRITICAL", text: "Install SSL certificate — Google penalises and browsers warn visitors on HTTP sites" },
-    !lead.sitemapFound    && { sev:"HIGH",     text: "Create and submit an XML sitemap to Google Search Console so all pages get indexed" },
-    !lead.hasH1           && { sev:"HIGH",     text: "Add a single clear H1 heading to the homepage containing the main keyword + location" },
-    lead.metaDescLength === 0 && { sev:"HIGH", text: "Write meta descriptions (120-160 chars) for every page — they appear in Google results" },
-    (lead.metaTitleLength < 30 || lead.metaTitleLength > 60) && lead.metaTitleLength !== 0
-                          && { sev:"HIGH",     text: `Page title is ${lead.metaTitleLength} characters — ideal is 30-60 chars with main keyword near the start` },
-    lead.wordCount < 300  && { sev:"HIGH",     text: `Homepage has only ~${lead.wordCount} words — add more relevant content describing services and location` },
-    !lead.hasSchema       && { sev:"MEDIUM",   text: "Add LocalBusiness schema markup — enables rich results (ratings, hours) in Google" },
-    !lead.hasCanonical    && { sev:"MEDIUM",   text: "Add canonical tags to prevent Google treating similar pages as duplicates" },
-    lead.imagesWithAlt < lead.imagesTotal && { sev:"MEDIUM", text: `${lead.imagesTotal - lead.imagesWithAlt} image(s) missing alt text — add descriptive alt attributes` },
-    lead.mobileScore < 50 && { sev:"HIGH",     text: `Mobile speed score is ${lead.mobileScore}/100 — compress images, remove unused JS/CSS, enable Gzip` },
-    !lead.hasViewport     && { sev:"CRITICAL", text: "Add a mobile viewport meta tag — without it the site is broken on phones" },
-    lead.h2Count < 2      && { sev:"MEDIUM",   text: "Add more H2/H3 subheadings — structure content into sections Google can index as topics" },
-    lead.internalLinks < 3 && { sev:"MEDIUM",  text: "Add internal links between pages — helps Google crawl the site and improves user navigation" },
-    !lead.hasOgTags       && { sev:"LOW",      text: "Add Open Graph tags so links shared on social media display a proper image and title" },
+    !lead.hasSSL && {
+      sev: "CRITICAL", title: "Install an SSL Certificate (HTTPS)",
+      why: "Every single visitor sees a 'Not Secure' browser warning. Google confirms SSL as a ranking factor. This is costing rankings AND customer trust simultaneously. Free SSL certificates (Let's Encrypt) are available for almost all web hosts.",
+    },
+    !lead.hasViewport && {
+      sev: "CRITICAL", title: "Add a Mobile Viewport Meta Tag",
+      why: "Without this one line of code, the site displays as a tiny desktop page on every phone. Since over 65% of local service searches happen on mobile, this is likely the single biggest source of lost enquiries.",
+    },
+    !lead.hasH1 && {
+      sev: "HIGH", title: "Add an H1 Heading to the Homepage",
+      why: "The homepage needs a clear headline that includes the main service and city (e.g. 'Professional Plumber in Lagos'). This is one of the strongest signals Google uses to decide what searches to show this site for.",
+    },
+    lead.metaDescLength === 0 && {
+      sev: "HIGH", title: "Write a Meta Description for Every Page",
+      why: "Right now, Google is generating random preview text for this site in search results. A compelling 120-160 character description is the difference between someone clicking this result or the one above it.",
+    },
+    !lead.sitemapFound && {
+      sev: "HIGH", title: "Create and Submit an XML Sitemap",
+      why: "Service pages, location pages, and contact pages may never get indexed because Google can't find them. A sitemap takes 30 minutes to create and ensures every page gets submitted to Google Search Console.",
+    },
+    (lead.metaTitleLength === 0 || lead.metaTitleLength < 30 || lead.metaTitleLength > 60) && {
+      sev: "HIGH", title: `Fix the Page Title Tag${lead.metaTitleLength > 0 ? ` (currently ${lead.metaTitleLength} chars)` : " (missing)"}`,
+      why: "The title is what appears as the clickable blue link in Google results. It should be 30-60 characters, include the main service keyword, and mention the city. A well-crafted title alone can significantly improve click-through rates.",
+    },
+    lead.wordCount < 300 && {
+      sev: "HIGH", title: `Increase Homepage Content (currently ~${lead.wordCount} words)`,
+      why: "Google needs enough content to understand what this business does, which areas it serves, and why customers should choose them. Pages with less than 400 words of relevant content rarely rank on page 1 — there simply isn't enough for Google to work with.",
+    },
+    lead.mobileScore < 50 && {
+      sev: "HIGH", title: `Improve Mobile Page Speed (score: ${lead.mobileScore}/100)`,
+      why: "A mobile score below 50 means the site is significantly slower than competitors. Google uses mobile speed as a ranking signal. Quick wins: compress images, remove unused plugins/scripts, enable browser caching, and use Gzip compression.",
+    },
+    !lead.hasSchema && {
+      sev: "MEDIUM", title: "Add LocalBusiness Schema Markup",
+      why: "Schema markup tells Google this is a real local business with a physical location, opening hours, and contact details. With it, this site becomes eligible for rich results in Google — star ratings, phone numbers, and hours visible directly in search without needing a click.",
+    },
+    lead.h2Count < 2 && {
+      sev: "MEDIUM", title: "Improve Heading Structure (H2 and H3 Tags)",
+      why: "Each service, service area, and customer benefit should have its own subheading. This makes the content easy to read for visitors and tells Google exactly what topics the page covers — each subheading is an additional ranking opportunity.",
+    },
+    !lead.hasCanonical && {
+      sev: "MEDIUM", title: "Add Canonical Tags to Prevent Duplicate Content",
+      why: "Without canonical tags, Google may be indexing multiple versions of the same page and splitting ranking power between them. Adding canonical tags consolidates this into a single, authoritative version that ranks better.",
+    },
+    lead.imagesWithAlt < lead.imagesTotal && {
+      sev: "MEDIUM", title: `Add Alt Text to ${lead.imagesTotal - lead.imagesWithAlt} Image(s)`,
+      why: "Every image without alt text is invisible to Google. Descriptive alt text (e.g. 'interior of Lagos hair salon') helps Google understand the images, improves accessibility for visually impaired visitors, and creates additional ranking signals.",
+    },
+    lead.internalLinks < 3 && {
+      sev: "MEDIUM", title: "Add Internal Links Between Pages",
+      why: "Internal links act as pathways for Google to discover and crawl every page on the site. Without them, important pages may be effectively invisible to Google. Every page should link to at least 2-3 other relevant pages.",
+    },
+    !lead.hasOgTags && {
+      sev: "LOW", title: "Add Open Graph Tags for Social Media Sharing",
+      why: "When someone shares this business's website on WhatsApp or Facebook, it currently appears as a plain link with no image or preview. Open Graph tags make it display like a professional card with an image, business name, and description — significantly more likely to be clicked.",
+    },
   ].filter(Boolean);
 
-  const sevColor = { CRITICAL: FAIL, HIGH: WARN, MEDIUM: INFO, LOW: [148, 163, 184] };
-  recs.slice(0, 10).forEach((rec, i) => {
-    pageCheck();
+  const sevColor = { CRITICAL: FAIL, HIGH: WARN, MEDIUM: BLUE, LOW: [148, 163, 184] };
+  const sevW = { CRITICAL: 52, HIGH: 32, MEDIUM: 48, LOW: 28 };
+
+  recs.slice(0, 12).forEach((rec, i) => {
+    pageCheck(55);
     const y = doc.y;
-    const [r, g, b] = sevColor[rec.sev] || INFO;
-    doc.roundedRect(50, y, 48, 13, 3).fill([r, g, b]);
-    doc.fillColor([255,255,255]).fontSize(6.5).font("Helvetica-Bold")
-      .text(rec.sev, 50, y + 3, { width: 48, align: "center" });
-    doc.fillColor(DARK).fontSize(8.5).font("Helvetica")
-      .text(rec.text, 106, y, { width: 435 });
-    doc.moveDown(0.7);
+    const [r, g, b] = sevColor[rec.sev] || BLUE;
+    const sw = sevW[rec.sev] || 40;
+    // Number circle
+    doc.circle(ML + 9, y + 9, 9).fill([r, g, b]);
+    doc.fillColor(WHITE).fontSize(7.5).font("Helvetica-Bold")
+      .text(String(i + 1), ML, y + 5, { width: 18, align: "center" });
+    // Severity badge
+    doc.roundedRect(ML + 22, y + 2, sw, 14, 3).fill([r, g, b]);
+    doc.fillColor(WHITE).fontSize(6.5).font("Helvetica-Bold")
+      .text(rec.sev, ML + 22, y + 5, { width: sw, align: "center" });
+    // Title
+    doc.fillColor(DARK).fontSize(9).font("Helvetica-Bold")
+      .text(rec.title, ML + 22 + sw + 8, y + 3, { width: CW - 22 - sw - 8 });
+    doc.y = Math.max(doc.y, y + 20);
+    // Why it matters
+    doc.fillColor(MID).fontSize(8).font("Helvetica")
+      .text(rec.why, ML + 22, doc.y, { width: CW - 22 });
+    doc.moveDown(0.8);
+    // Divider
+    if (i < recs.length - 1) {
+      pageCheck(10);
+      doc.rect(ML + 22, doc.y, CW - 22, 0.5).fill([226, 232, 240]);
+      doc.moveDown(0.5);
+    }
   });
 
-  // ── FOOTER ────────────────────────────────────────────────────────────────────
-  const totalPages = doc.bufferedPageRange ? doc.bufferedPageRange().count : "—";
-  const range = doc.bufferedPageRange();
-  for (let i = 0; i < (range ? range.count : 1); i++) {
-    doc.switchToPage(range ? range.start + i : 0);
-    doc.rect(0, 818, 595, 24).fill([241, 245, 249]);
-    doc.fillColor(LIGHT).fontSize(7).font("Helvetica")
-      .text(`Zaram SEO PitchReady  ·  Generated ${new Date().toLocaleDateString("en-GB")}  ·  Data from Google PageSpeed Insights API  ·  Page ${i + 1}`,
-        50, 823, { width: 495, align: "center" });
+  // ── Contact info ──
+  if (lead.emails.length || lead.phones.length || lead.facebookUrl) {
+    pageCheck(60);
+    doc.moveDown(0.8);
+    section("Contact Details Found During Audit");
+    if (lead.emails.length) {
+      doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Email:", ML, doc.y, { continued: true });
+      doc.fillColor(BLUE).font("Helvetica").text("  " + lead.emails.join("  ·  "));
+    }
+    if (lead.phones.length) {
+      doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Phone:", ML, doc.y, { continued: true });
+      doc.fillColor(MID).font("Helvetica").text("  " + lead.phones.slice(0,3).join("  ·  "));
+    }
+    if (lead.facebookUrl) {
+      doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Facebook:", ML, doc.y, { continued: true });
+      doc.fillColor([59, 130, 246]).font("Helvetica").text("  " + lead.facebookUrl);
+    }
+    doc.moveDown(0.5);
   }
 
+  // ── CTA footer block ──
+  pageCheck(70);
+  doc.moveDown(1);
+  const ctaY = doc.y;
+  const ctaText =
+    "This audit was prepared to show the specific, fixable reasons why this business is not showing up on Google page 1. " +
+    "Every issue listed above has a solution — and fixing even the top 3 items typically produces a measurable improvement in rankings within 30–60 days. " +
+    "If you would like help fixing these issues or would like to discuss a redesign, reply to the email that accompanied this report.";
+  callout(ML, ctaY, CW, 14 + Math.ceil(ctaText.length / 90) * 11 + 10, [30, 41, 59], ctaText);
+
+  // ── Footers on all pages ──
+  footer();
   doc.end();
 }
 
