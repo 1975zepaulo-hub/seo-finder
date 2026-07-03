@@ -145,14 +145,38 @@ function extractEmails(html, existing = []) {
 }
 
 async function crawlSite(url) {
-  const result = { emails: [], phones: [], hasH1: false, hasMetaDesc: false, pageTitle: "", facebookUrl: null, crawlError: false };
+  const result = {
+    emails: [], phones: [], facebookUrl: null, crawlError: false,
+    // Content signals
+    pageTitle: "", metaTitleLength: 0,
+    metaDesc: "", metaDescLength: 0,
+    hasH1: false, h1Text: "", h1Count: 0,
+    h2Count: 0, h3Count: 0,
+    imagesTotal: 0, imagesWithAlt: 0,
+    wordCount: 0, internalLinks: 0, externalLinks: 0,
+    hasSchema: false, hasCanonical: false, hasOgTags: false, hasViewport: false,
+    // Technical
+    sitemapFound: false, robotsTxtFound: false,
+  };
+
+  const base = new URL(url);
+  const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36";
+
+  // Check sitemap and robots.txt in parallel
+  await Promise.all([
+    axios.get(base.origin + "/sitemap.xml", { timeout: 6000, headers: { "User-Agent": UA } })
+      .then(() => { result.sitemapFound = true; }).catch(() => {}),
+    axios.get(base.origin + "/robots.txt", { timeout: 6000, headers: { "User-Agent": UA } })
+      .then(() => { result.robotsTxtFound = true; }).catch(() => {}),
+  ]);
+
   const pages = [url, url.replace(/\/?$/, "/contact"), url.replace(/\/?$/, "/about")];
 
   for (const pageUrl of pages) {
     try {
       const resp = await axios.get(pageUrl, {
         timeout: 10000,
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36" },
+        headers: { "User-Agent": UA },
         maxRedirects: 5,
       });
       const html = resp.data;
@@ -167,28 +191,64 @@ async function crawlSite(url) {
           result.phones.push(p.trim());
       });
 
-      // Grab Facebook page link if present
       if (!result.facebookUrl) {
         $('a[href*="facebook.com"]').each((_, el) => {
           const href = $(el).attr("href") || "";
-          // Only business pages (not share links or generic FB homepage)
           if (href.match(/facebook\.com\/(?!sharer|share|login|home|watch|groups|events)[\w.]+/)) {
             result.facebookUrl = href.split("?")[0].replace(/\/$/, "");
           }
         });
       }
 
+      // Deep content analysis on homepage only
       if (pageUrl === url) {
-        result.hasH1 = $("h1").length > 0;
-        result.hasMetaDesc = !!$('meta[name="description"]').attr("content");
         result.pageTitle = $("title").text().trim();
+        result.metaTitleLength = result.pageTitle.length;
+
+        const metaDescContent = $('meta[name="description"]').attr("content") || "";
+        result.metaDesc = metaDescContent.trim();
+        result.metaDescLength = result.metaDesc.length;
+
+        const h1s = $("h1");
+        result.h1Count = h1s.length;
+        result.hasH1 = h1s.length > 0;
+        result.h1Text = h1s.first().text().trim().slice(0, 120);
+        result.h2Count = $("h2").length;
+        result.h3Count = $("h3").length;
+
+        const imgs = $("img");
+        result.imagesTotal = imgs.length;
+        result.imagesWithAlt = imgs.filter((_, el) => {
+          const alt = $(el).attr("alt");
+          return alt && alt.trim().length > 0;
+        }).length;
+
+        // Word count from visible text
+        $("script, style, nav, footer, header").remove();
+        const bodyText = $("body").text().replace(/\s+/g, " ").trim();
+        result.wordCount = bodyText.split(" ").filter(w => w.length > 1).length;
+
+        // Links
+        const allLinks = $("a[href]");
+        let internal = 0, external = 0;
+        allLinks.each((_, el) => {
+          const href = $(el).attr("href") || "";
+          if (href.startsWith("http") && !href.includes(base.hostname)) external++;
+          else if (href.startsWith("/") || href.includes(base.hostname)) internal++;
+        });
+        result.internalLinks = internal;
+        result.externalLinks = external;
+
+        result.hasSchema = html.includes('"@context"') && (html.includes("schema.org") || html.includes("Schema.org"));
+        result.hasCanonical = $('link[rel="canonical"]').length > 0;
+        result.hasOgTags = $('meta[property^="og:"]').length > 0;
+        result.hasViewport = $('meta[name="viewport"]').length > 0;
       }
     } catch (e) {
       if (pageUrl === url) result.crawlError = true;
     }
   }
 
-  // If no email found but Facebook link exists — try scraping it
   if (!result.emails.length && result.facebookUrl) {
     const fbEmails = await crawlFacebook(result.facebookUrl);
     fbEmails.forEach(e => result.emails.push(e));
@@ -333,144 +393,321 @@ Return exactly this JSON:
 
 // ── 5. Generate PDF audit report ─────────────────────────────────────────────
 function generatePDF(lead, res) {
-  const doc = new PDFDocument({ margin: 50, size: "A4" });
+  const doc = new PDFDocument({ margin: 50, size: "A4", autoFirstPage: true });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="audit-${new URL(lead.url).hostname}.pdf"`);
   doc.pipe(res);
 
-  const W = 495;
-  const scoreColor = (s) => s >= 70 ? [34, 197, 94] : s >= 40 ? [251, 146, 60] : [239, 68, 68];
+  // ── Helpers ──
+  const PASS  = [34, 197, 94];
+  const WARN  = [251, 146, 60];
+  const FAIL  = [239, 68, 68];
+  const INFO  = [99, 102, 241];
+  const DARK  = [15, 23, 42];
+  const MID   = [51, 65, 85];
+  const LIGHT = [100, 116, 139];
+
+  const scoreColor = (s) => s >= 70 ? PASS : s >= 40 ? WARN : FAIL;
+
+  const pageCheck = () => {
+    if (doc.y > 720) { doc.addPage(); }
+  };
+
+  const section = (title) => {
+    pageCheck();
+    doc.moveDown(0.6);
+    doc.rect(50, doc.y, 495, 20).fill([241, 245, 249]);
+    doc.fillColor(DARK).fontSize(9).font("Helvetica-Bold")
+      .text(title.toUpperCase(), 56, doc.y - 15, { characterSpacing: 0.8 });
+    doc.moveDown(0.8);
+  };
+
+  // Status icon: PASS / WARN / FAIL
+  const statusTag = (x, y, status) => {
+    const colors = { PASS, WARN, FAIL };
+    const labels = { PASS: "PASS", WARN: "WARN", FAIL: "FAIL" };
+    const [r, g, b] = colors[status] || INFO;
+    doc.roundedRect(x, y, 34, 12, 3).fill([r, g, b]);
+    doc.fillColor([255,255,255]).fontSize(6.5).font("Helvetica-Bold")
+      .text(labels[status], x, y + 2.5, { width: 34, align: "center" });
+  };
+
+  // Checklist row
+  const checkRow = (label, status, value, note, indent = 50) => {
+    pageCheck();
+    const y = doc.y;
+    statusTag(indent, y, status);
+    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold")
+      .text(label, indent + 42, y, { width: 200 });
+    if (value) {
+      doc.fillColor(MID).fontSize(8).font("Helvetica")
+        .text(value, indent + 248, y, { width: 180, align: "right" });
+    }
+    if (note) {
+      doc.fillColor(LIGHT).fontSize(7.5).font("Helvetica")
+        .text(note, indent + 42, doc.y, { width: 380 });
+    }
+    doc.moveDown(note ? 0.55 : 0.45);
+  };
+
+  // Score box
   const drawScore = (x, y, label, score) => {
     const [r, g, b] = scoreColor(score);
-    doc.roundedRect(x, y, 100, 60, 8).fillColor([r, g, b], 0.12).fill();
-    doc.fillColor([r, g, b]).fontSize(22).font("Helvetica-Bold").text(score, x, y + 10, { width: 100, align: "center" });
-    doc.fillColor("#64748b").fontSize(8).font("Helvetica").text(label, x, y + 40, { width: 100, align: "center" });
-  };
-  const section = (title, y) => {
-    doc.moveDown(0.5);
-    doc.fillColor("#1e1b4b").fontSize(11).font("Helvetica-Bold").text(title.toUpperCase(), 50, doc.y, { characterSpacing: 1 });
-    doc.moveTo(50, doc.y + 3).lineTo(545, doc.y + 3).strokeColor("#e2e8f0").lineWidth(1).stroke();
-    doc.moveDown(0.5);
+    doc.roundedRect(x, y, 112, 58, 6).fill([r, g, b, 0.08]);
+    doc.roundedRect(x, y, 112, 58, 6).strokeColor([r, g, b]).lineWidth(1.5).stroke();
+    doc.fillColor([r, g, b]).fontSize(24).font("Helvetica-Bold")
+      .text(score > 0 ? score : "N/A", x, y + 9, { width: 112, align: "center" });
+    doc.fillColor(LIGHT).fontSize(7.5).font("Helvetica")
+      .text(label, x, y + 40, { width: 112, align: "center" });
   };
 
-  // Header
-  doc.rect(0, 0, 595, 90).fill("#0f172a");
-  doc.fillColor("#a78bfa").fontSize(9).font("Helvetica-Bold").text("ZARAM SEO PITCHREADY", 50, 25, { characterSpacing: 2 });
-  doc.fillColor("#ffffff").fontSize(16).font("Helvetica-Bold").text("Website SEO Audit Report", 50, 40);
-  doc.fillColor("#94a3b8").fontSize(9).font("Helvetica").text(`Prepared: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`, 50, 65);
+  // ── PAGE 1: HEADER ──────────────────────────────────────────────────────────
+  doc.rect(0, 0, 595, 100).fill(DARK);
+  // accent stripe
+  doc.rect(0, 0, 6, 100).fill(INFO);
 
-  doc.y = 110;
+  doc.fillColor(INFO).fontSize(8).font("Helvetica-Bold")
+    .text("ZARAM SEO PITCHREADY  ·  WEBSITE AUDIT REPORT", 20, 20, { characterSpacing: 1.5 });
 
-  // Business details
-  doc.fillColor("#1e293b").fontSize(14).font("Helvetica-Bold").text(lead.title, 50, doc.y);
-  doc.moveDown(0.2);
-  doc.fillColor("#6366f1").fontSize(10).font("Helvetica").text(lead.url);
-  doc.fillColor("#64748b").fontSize(9).text(`Currently ranking on Google page ${lead.googlePage} · Audit date: ${new Date().toLocaleDateString()}`);
-  doc.moveDown(1);
+  const titleStr = (lead.title || lead.url).slice(0, 65);
+  doc.fillColor([255,255,255]).fontSize(17).font("Helvetica-Bold")
+    .text(titleStr, 20, 34);
 
-  // Score cards
-  section("Performance Scores");
+  doc.fillColor([148, 163, 184]).fontSize(8.5).font("Helvetica")
+    .text(lead.url, 20, 58);
+
+  const ctrMap = { 1:"~28%", 2:"~6%", 3:"~3%", 4:"~2%", 5:"~1.5%" };
+  const ctr = ctrMap[lead.googlePage] || "<1%";
+  doc.fillColor([167, 139, 250]).fontSize(8.5).font("Helvetica-Bold")
+    .text(`Found on Google PAGE ${lead.googlePage}  ·  Estimated click share: ${ctr}  ·  Audit: ${new Date().toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })}`,
+      20, 74, { characterSpacing: 0.3 });
+
+  doc.y = 118;
+
+  // ── OVERALL SCORE SUMMARY ────────────────────────────────────────────────────
+  // Count total checks passed
+  const checks = [
+    lead.hasSSL, lead.hasH1, lead.metaDescLength > 0, lead.metaTitleLength >= 30 && lead.metaTitleLength <= 60,
+    lead.sitemapFound, lead.robotsTxtFound, lead.hasCanonical, lead.hasSchema, lead.hasViewport, lead.hasOgTags,
+    lead.h2Count > 0, lead.imagesWithAlt === lead.imagesTotal && lead.imagesTotal > 0,
+    lead.wordCount >= 300, lead.internalLinks >= 3,
+    lead.mobileScore >= 70, lead.seoScore >= 70,
+  ];
+  const passed = checks.filter(Boolean).length;
+  const total = checks.length;
+  const grade = passed >= 14 ? "A" : passed >= 11 ? "B" : passed >= 8 ? "C" : passed >= 5 ? "D" : "F";
+  const gradeColor = passed >= 14 ? PASS : passed >= 11 ? WARN : FAIL;
+
+  // Grade box
+  doc.roundedRect(50, doc.y, 80, 70, 8).fill(gradeColor);
+  doc.fillColor([255,255,255]).fontSize(36).font("Helvetica-Bold")
+    .text(grade, 50, doc.y + 10, { width: 80, align: "center" });
+  doc.fillColor([255,255,255]).fontSize(7.5).font("Helvetica")
+    .text("OVERALL GRADE", 50, doc.y + 50, { width: 80, align: "center" });
+
+  const summY = doc.y;
+  doc.fillColor(DARK).fontSize(10).font("Helvetica-Bold")
+    .text(`${passed} of ${total} checks passed`, 145, summY + 8);
+  doc.fillColor(LIGHT).fontSize(8.5).font("Helvetica")
+    .text(`This site has ${total - passed} issue${total - passed !== 1 ? "s" : ""} that need attention to improve its Google ranking.`, 145, summY + 26, { width: 350 });
+
+  // mini bar
+  const barX = 145, barY = summY + 48, barW = 350;
+  doc.roundedRect(barX, barY, barW, 8, 4).fill([226,232,240]);
+  doc.roundedRect(barX, barY, Math.round(barW * passed / total), 8, 4).fill(gradeColor);
+
+  doc.y = summY + 80;
+
+  // ── PERFORMANCE SCORES ───────────────────────────────────────────────────────
+  section("Performance Scores  (Google PageSpeed Insights)");
   const sy = doc.y;
-  drawScore(50, sy, "Mobile Speed", lead.mobileScore);
-  drawScore(160, sy, "Desktop Speed", lead.desktopScore);
-  drawScore(270, sy, "SEO Score", lead.seoScore);
-  drawScore(380, sy, "Accessibility", lead.accessibilityScore);
-  doc.y = sy + 75;
-  doc.moveDown(0.5);
+  drawScore(50,  sy, "Mobile Speed",  lead.mobileScore  || 0);
+  drawScore(172, sy, "Desktop Speed", lead.desktopScore || 0);
+  drawScore(294, sy, "SEO Score",     lead.seoScore     || 0);
+  drawScore(416, sy, "Accessibility", lead.accessibilityScore || 0);
+  doc.y = sy + 68;
 
-  // Core Web Vitals
+  // ── CORE WEB VITALS ──────────────────────────────────────────────────────────
   section("Core Web Vitals");
   const vitals = [
-    ["Largest Contentful Paint (LCP)", lead.lcp, "Should be under 2.5s"],
-    ["Total Blocking Time (TBT)", lead.tbt, "Should be under 200ms"],
-    ["Cumulative Layout Shift (CLS)", lead.cls, "Should be under 0.1"],
-    ["First Contentful Paint (FCP)", lead.fcp, "Should be under 1.8s"],
-    ["Time to Interactive (TTI)", lead.tti, "Should be under 3.8s"],
+    ["Largest Contentful Paint (LCP)", lead.lcp, "< 2.5s is good", !lead.lcp || lead.lcp === "N/A" ? "WARN" : parseFloat(lead.lcp) <= 2.5 ? "PASS" : parseFloat(lead.lcp) <= 4 ? "WARN" : "FAIL"],
+    ["First Contentful Paint (FCP)",   lead.fcp, "< 1.8s is good", !lead.fcp || lead.fcp === "N/A" ? "WARN" : parseFloat(lead.fcp) <= 1.8 ? "PASS" : parseFloat(lead.fcp) <= 3 ? "WARN" : "FAIL"],
+    ["Total Blocking Time (TBT)",      lead.tbt, "< 200ms is good", !lead.tbt || lead.tbt === "N/A" ? "WARN" : parseInt(lead.tbt) <= 200 ? "PASS" : parseInt(lead.tbt) <= 600 ? "WARN" : "FAIL"],
+    ["Cumulative Layout Shift (CLS)",  lead.cls, "< 0.1 is good",  !lead.cls || lead.cls === "N/A" ? "WARN" : parseFloat(lead.cls) <= 0.1 ? "PASS" : parseFloat(lead.cls) <= 0.25 ? "WARN" : "FAIL"],
+    ["Time to Interactive (TTI)",      lead.tti, "< 3.8s is good", !lead.tti || lead.tti === "N/A" ? "WARN" : parseFloat(lead.tti) <= 3.8 ? "PASS" : parseFloat(lead.tti) <= 7.3 ? "WARN" : "FAIL"],
   ];
-  vitals.forEach(([name, val, target]) => {
-    const rowY = doc.y;
-    doc.fillColor("#1e293b").fontSize(9).font("Helvetica-Bold").text(name, 50, rowY, { width: 220 });
-    doc.fillColor("#334155").fontSize(9).font("Helvetica").text(val || "N/A", 280, rowY, { width: 80, align: "right" });
-    doc.fillColor("#94a3b8").fontSize(8).text(target, 370, rowY, { width: 175 });
-    doc.moveDown(0.55);
+  vitals.forEach(([name, val, note, status]) => {
+    checkRow(name, status, val || "N/A", note);
   });
-  doc.moveDown(0.3);
 
-  // Issues found
-  section("Issues Found");
+  // ── ON-PAGE SEO CHECKLIST ────────────────────────────────────────────────────
+  doc.addPage();
+  section("On-Page SEO Checklist");
+
+  // SSL
+  checkRow("SSL / HTTPS", lead.hasSSL ? "PASS" : "FAIL",
+    lead.hasSSL ? "Secure" : "NOT SECURE",
+    lead.hasSSL ? "Site is served over HTTPS" : "Site is HTTP — Google marks it insecure and demotes it in rankings");
+
+  // Page Title
+  const titleStatus = lead.metaTitleLength >= 30 && lead.metaTitleLength <= 60 ? "PASS"
+    : lead.metaTitleLength > 0 ? "WARN" : "FAIL";
+  checkRow("Page Title (meta title)", titleStatus,
+    lead.metaTitleLength > 0 ? `${lead.metaTitleLength} chars` : "Missing",
+    lead.pageTitle ? `"${lead.pageTitle.slice(0, 70)}"` : "No title tag found — critical for rankings and click-through rate");
+
+  // Meta Description
+  const descStatus = lead.metaDescLength >= 120 && lead.metaDescLength <= 160 ? "PASS"
+    : lead.metaDescLength > 0 ? "WARN" : "FAIL";
+  checkRow("Meta Description", descStatus,
+    lead.metaDescLength > 0 ? `${lead.metaDescLength} chars` : "Missing",
+    lead.metaDesc ? `"${lead.metaDesc.slice(0, 100)}${lead.metaDesc.length > 100 ? "…" : ""}"` : "No meta description — affects how the site appears in Google results");
+
+  // H1
+  const h1Status = lead.h1Count === 1 ? "PASS" : lead.h1Count > 1 ? "WARN" : "FAIL";
+  checkRow("H1 Heading", h1Status,
+    lead.h1Count > 0 ? `${lead.h1Count} found` : "Missing",
+    lead.h1Text ? `"${lead.h1Text}"` : "No H1 heading on homepage — Google uses this as the main topic signal");
+
+  // H2/H3
+  const headingStatus = lead.h2Count >= 2 ? "PASS" : lead.h2Count > 0 ? "WARN" : "FAIL";
+  checkRow("Heading Structure (H2/H3)", headingStatus,
+    `${lead.h2Count} H2s, ${lead.h3Count} H3s`,
+    lead.h2Count < 2 ? "Too few subheadings — content is hard to read and harder for Google to understand" : "Good heading structure helps Google index content topics");
+
+  // Images alt
+  const altStatus = lead.imagesTotal === 0 ? "WARN"
+    : lead.imagesWithAlt === lead.imagesTotal ? "PASS"
+    : lead.imagesWithAlt >= lead.imagesTotal * 0.7 ? "WARN" : "FAIL";
+  checkRow("Image Alt Text", altStatus,
+    lead.imagesTotal > 0 ? `${lead.imagesWithAlt} of ${lead.imagesTotal} images` : "No images found",
+    lead.imagesWithAlt < lead.imagesTotal ? `${lead.imagesTotal - lead.imagesWithAlt} image(s) have no alt text — missed SEO signal and fails accessibility` : "All images have alt text");
+
+  // Word count
+  const wordStatus = lead.wordCount >= 600 ? "PASS" : lead.wordCount >= 300 ? "WARN" : "FAIL";
+  checkRow("Homepage Word Count", wordStatus,
+    `~${lead.wordCount} words`,
+    lead.wordCount < 300 ? "Very thin content — Google needs enough text to understand what the page is about (aim for 400+ words)"
+    : lead.wordCount < 600 ? "Acceptable but light — more relevant content helps rankings" : "Good content depth");
+
+  // Internal links
+  const linkStatus = lead.internalLinks >= 5 ? "PASS" : lead.internalLinks >= 2 ? "WARN" : "FAIL";
+  checkRow("Internal Links", linkStatus,
+    `${lead.internalLinks} internal links`,
+    lead.internalLinks < 3 ? "Very few internal links — site structure is poor, Google struggles to crawl and rank all pages" : "Helps Google crawl the site and distributes ranking power");
+
+  // ── TECHNICAL SEO CHECKLIST ──────────────────────────────────────────────────
+  section("Technical SEO Checklist");
+
+  checkRow("XML Sitemap (/sitemap.xml)", lead.sitemapFound ? "PASS" : "FAIL",
+    lead.sitemapFound ? "Found" : "Not found",
+    lead.sitemapFound ? "Sitemap is present — helps Google discover all pages" : "No sitemap — Google may miss pages entirely. Submit one via Google Search Console");
+
+  checkRow("Robots.txt (/robots.txt)", lead.robotsTxtFound ? "PASS" : "WARN",
+    lead.robotsTxtFound ? "Found" : "Not found",
+    lead.robotsTxtFound ? "Robots.txt is present" : "No robots.txt — not critical but best practice to have one");
+
+  checkRow("Canonical Tag", lead.hasCanonical ? "PASS" : "WARN",
+    lead.hasCanonical ? "Present" : "Missing",
+    lead.hasCanonical ? "Canonical tag present — prevents duplicate content issues" : "No canonical tag — if content is duplicated, Google may index the wrong version");
+
+  checkRow("Structured Data / Schema", lead.hasSchema ? "PASS" : "WARN",
+    lead.hasSchema ? "Detected" : "Not found",
+    lead.hasSchema ? "Schema markup found — helps Google show rich results (stars, FAQs, etc.)" : "No schema markup — missing rich result opportunities (reviews, business hours, etc.)");
+
+  checkRow("Mobile Viewport Meta Tag", lead.hasViewport ? "PASS" : "FAIL",
+    lead.hasViewport ? "Present" : "Missing",
+    lead.hasViewport ? "Viewport tag present" : "No viewport tag — site will not display correctly on mobile phones");
+
+  checkRow("Open Graph / Social Tags", lead.hasOgTags ? "PASS" : "WARN",
+    lead.hasOgTags ? "Present" : "Missing",
+    lead.hasOgTags ? "OG tags found — shared links will display correctly on social media" : "No Open Graph tags — links shared on Facebook/WhatsApp won't show image or title preview");
+
+  // ── PERFORMANCE ISSUES FROM PAGESPEED ────────────────────────────────────────
   if (lead.issues && lead.issues.length) {
+    section("Performance Issues Detected");
     lead.issues.forEach((issue) => {
-      const rowY = doc.y;
-      doc.circle(56, rowY + 4, 3).fill("#ef4444");
-      doc.fillColor("#1e293b").fontSize(9).font("Helvetica-Bold").text(issue.label, 65, rowY, { width: 300 });
+      pageCheck();
+      const y = doc.y;
+      statusTag(50, y, "FAIL");
+      doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold")
+        .text(issue.label, 92, y, { width: 340 });
       if (issue.detail) {
-        doc.fillColor("#64748b").fontSize(8).font("Helvetica").text(issue.detail, 65, doc.y, { width: 430 });
+        doc.fillColor(LIGHT).fontSize(8).font("Helvetica").text(issue.detail, 92, doc.y, { width: 380 });
       }
-      doc.moveDown(0.5);
+      doc.moveDown(issue.detail ? 0.55 : 0.45);
     });
-  } else {
-    doc.fillColor("#22c55e").fontSize(9).text("No critical issues detected.");
-    doc.moveDown(0.5);
   }
 
-  if (!lead.hasH1) {
-    const rowY = doc.y;
-    doc.circle(56, rowY + 4, 3).fill("#ef4444");
-    doc.fillColor("#1e293b").fontSize(9).font("Helvetica-Bold").text("No H1 heading found on homepage", 65, rowY);
-    doc.moveDown(0.5);
-  }
-  if (!lead.hasMetaDesc) {
-    const rowY = doc.y;
-    doc.circle(56, rowY + 4, 3).fill("#ef4444");
-    doc.fillColor("#1e293b").fontSize(9).font("Helvetica-Bold").text("No meta description tag", 65, rowY);
-    doc.moveDown(0.5);
-  }
-  doc.moveDown(0.3);
-
-  // Contact info found
+  // ── CONTACT INFO ──────────────────────────────────────────────────────────────
   section("Contact Information Found on Site");
-  doc.fillColor("#64748b").fontSize(9).font("Helvetica").text("The following contact details were extracted by crawling the site:");
-  doc.moveDown(0.4);
   if (lead.emails.length) {
-    doc.fillColor("#1e293b").fontSize(9).font("Helvetica-Bold").text("Email addresses:");
-    lead.emails.forEach((e) => doc.fillColor("#6366f1").fontSize(9).font("Helvetica").text("  " + e));
+    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Email addresses:");
+    lead.emails.forEach((e) => {
+      doc.fillColor(INFO).fontSize(8.5).font("Helvetica").text("  " + e);
+    });
     doc.moveDown(0.3);
   }
   if (lead.phones.length) {
-    doc.fillColor("#1e293b").fontSize(9).font("Helvetica-Bold").text("Phone numbers:");
-    lead.phones.slice(0, 3).forEach((p) => doc.fillColor("#334155").fontSize(9).font("Helvetica").text("  " + p));
+    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Phone numbers:");
+    lead.phones.slice(0, 3).forEach((p) => {
+      doc.fillColor(MID).fontSize(8.5).font("Helvetica").text("  " + p);
+    });
+    doc.moveDown(0.3);
+  }
+  if (lead.facebookUrl) {
+    doc.fillColor(DARK).fontSize(8.5).font("Helvetica-Bold").text("Facebook page:");
+    doc.fillColor([59, 130, 246]).fontSize(8.5).font("Helvetica").text("  " + lead.facebookUrl);
     doc.moveDown(0.3);
   }
   if (!lead.emails.length && !lead.phones.length) {
-    doc.fillColor("#94a3b8").fontSize(9).text("No contact details found on public pages.");
-    doc.moveDown(0.3);
+    doc.fillColor(LIGHT).fontSize(8.5).font("Helvetica").text("No contact details found on public pages.");
   }
-  doc.moveDown(0.3);
+  doc.moveDown(0.4);
 
-  // Recommendations
-  section("Top Recommendations");
+  // ── PRIORITY RECOMMENDATIONS ──────────────────────────────────────────────────
+  section("Priority Action List");
   const recs = [
-    lead.mobileScore < 50 && "Optimise mobile performance — compress images, remove unused JS/CSS, enable Gzip compression",
-    !lead.hasSSL && "Install an SSL certificate immediately — Google flags HTTP sites as insecure",
-    !lead.hasMetaDesc && "Write a meta description for every page — this directly affects click-through rates in search",
-    !lead.hasH1 && "Add a clear H1 heading to the homepage — essential for on-page SEO",
-    lead.seoScore < 70 && "Improve on-page SEO: title tags, structured headings, internal linking",
-    lead.lcp && lead.lcp !== "N/A" && parseFloat(lead.lcp) > 2.5 && "Reduce Largest Contentful Paint — defer offscreen images, preload key resources",
+    !lead.hasSSL          && { sev:"CRITICAL", text: "Install SSL certificate — Google penalises and browsers warn visitors on HTTP sites" },
+    !lead.sitemapFound    && { sev:"HIGH",     text: "Create and submit an XML sitemap to Google Search Console so all pages get indexed" },
+    !lead.hasH1           && { sev:"HIGH",     text: "Add a single clear H1 heading to the homepage containing the main keyword + location" },
+    lead.metaDescLength === 0 && { sev:"HIGH", text: "Write meta descriptions (120-160 chars) for every page — they appear in Google results" },
+    (lead.metaTitleLength < 30 || lead.metaTitleLength > 60) && lead.metaTitleLength !== 0
+                          && { sev:"HIGH",     text: `Page title is ${lead.metaTitleLength} characters — ideal is 30-60 chars with main keyword near the start` },
+    lead.wordCount < 300  && { sev:"HIGH",     text: `Homepage has only ~${lead.wordCount} words — add more relevant content describing services and location` },
+    !lead.hasSchema       && { sev:"MEDIUM",   text: "Add LocalBusiness schema markup — enables rich results (ratings, hours) in Google" },
+    !lead.hasCanonical    && { sev:"MEDIUM",   text: "Add canonical tags to prevent Google treating similar pages as duplicates" },
+    lead.imagesWithAlt < lead.imagesTotal && { sev:"MEDIUM", text: `${lead.imagesTotal - lead.imagesWithAlt} image(s) missing alt text — add descriptive alt attributes` },
+    lead.mobileScore < 50 && { sev:"HIGH",     text: `Mobile speed score is ${lead.mobileScore}/100 — compress images, remove unused JS/CSS, enable Gzip` },
+    !lead.hasViewport     && { sev:"CRITICAL", text: "Add a mobile viewport meta tag — without it the site is broken on phones" },
+    lead.h2Count < 2      && { sev:"MEDIUM",   text: "Add more H2/H3 subheadings — structure content into sections Google can index as topics" },
+    lead.internalLinks < 3 && { sev:"MEDIUM",  text: "Add internal links between pages — helps Google crawl the site and improves user navigation" },
+    !lead.hasOgTags       && { sev:"LOW",      text: "Add Open Graph tags so links shared on social media display a proper image and title" },
   ].filter(Boolean);
 
-  recs.slice(0, 5).forEach((rec, i) => {
-    const rowY = doc.y;
-    doc.fillColor("#6366f1").fontSize(9).font("Helvetica-Bold").text(`${i + 1}.`, 50, rowY, { width: 15 });
-    doc.fillColor("#1e293b").fontSize(9).font("Helvetica").text(rec, 68, rowY, { width: 477 });
-    doc.moveDown(0.6);
+  const sevColor = { CRITICAL: FAIL, HIGH: WARN, MEDIUM: INFO, LOW: [148, 163, 184] };
+  recs.slice(0, 10).forEach((rec, i) => {
+    pageCheck();
+    const y = doc.y;
+    const [r, g, b] = sevColor[rec.sev] || INFO;
+    doc.roundedRect(50, y, 48, 13, 3).fill([r, g, b]);
+    doc.fillColor([255,255,255]).fontSize(6.5).font("Helvetica-Bold")
+      .text(rec.sev, 50, y + 3, { width: 48, align: "center" });
+    doc.fillColor(DARK).fontSize(8.5).font("Helvetica")
+      .text(rec.text, 106, y, { width: 435 });
+    doc.moveDown(0.7);
   });
 
-  // Footer
-  const footerY = 780;
-  doc.moveTo(50, footerY).lineTo(545, footerY).strokeColor("#e2e8f0").lineWidth(1).stroke();
-  doc.fillColor("#94a3b8").fontSize(8).font("Helvetica")
-    .text("This report was generated by Zaram SEO PitchReady using Google PageSpeed Insights API.", 50, footerY + 8, { align: "center", width: 495 })
-    .text("Data reflects the live state of the website at the time of audit.", { align: "center", width: 495 });
+  // ── FOOTER ────────────────────────────────────────────────────────────────────
+  const totalPages = doc.bufferedPageRange ? doc.bufferedPageRange().count : "—";
+  const range = doc.bufferedPageRange();
+  for (let i = 0; i < (range ? range.count : 1); i++) {
+    doc.switchToPage(range ? range.start + i : 0);
+    doc.rect(0, 818, 595, 24).fill([241, 245, 249]);
+    doc.fillColor(LIGHT).fontSize(7).font("Helvetica")
+      .text(`Zaram SEO PitchReady  ·  Generated ${new Date().toLocaleDateString("en-GB")}  ·  Data from Google PageSpeed Insights API  ·  Page ${i + 1}`,
+        50, 823, { width: 495, align: "center" });
+  }
 
   doc.end();
 }
@@ -534,23 +771,35 @@ async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider, aiMod
         url: r.url,
         googlePage: r.page,
         snippet: r.snippet,
+        // Performance
         mobileScore: ps.mobileScore,
         desktopScore: ps.desktopScore,
         seoScore: ps.seoScore,
         accessibilityScore: ps.accessibilityScore,
         loadTime: ps.tti,
-        lcp: ps.lcp,
-        tbt: ps.tbt,
-        fcp: ps.fcp,
-        tti: ps.tti,
-        cls: ps.cls,
+        lcp: ps.lcp, tbt: ps.tbt, fcp: ps.fcp, tti: ps.tti, cls: ps.cls,
         hasSSL: ps.hasSSL,
         issues: ps.issues,
         issueLabels: ps.issueLabels,
+        // Content signals
+        pageTitle: crawl.pageTitle,
+        metaTitleLength: crawl.metaTitleLength,
+        metaDesc: crawl.metaDesc,
+        metaDescLength: crawl.metaDescLength,
+        hasH1: crawl.hasH1, h1Text: crawl.h1Text, h1Count: crawl.h1Count,
+        h2Count: crawl.h2Count, h3Count: crawl.h3Count,
+        imagesTotal: crawl.imagesTotal, imagesWithAlt: crawl.imagesWithAlt,
+        wordCount: crawl.wordCount,
+        internalLinks: crawl.internalLinks,
+        hasSchema: crawl.hasSchema,
+        hasCanonical: crawl.hasCanonical,
+        hasOgTags: crawl.hasOgTags,
+        hasViewport: crawl.hasViewport,
+        sitemapFound: crawl.sitemapFound,
+        robotsTxtFound: crawl.robotsTxtFound,
+        // Contact
         emails: crawl.emails,
         phones: crawl.phones,
-        hasH1: crawl.hasH1,
-        hasMetaDesc: crawl.hasMetaDesc,
         facebookUrl: crawl.facebookUrl || null,
         emailSource: crawl.emailSource || "website",
         seoPitch,
