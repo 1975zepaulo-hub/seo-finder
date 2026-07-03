@@ -65,7 +65,10 @@
         <h3 class="font-bold text-gray-800" id="progress-title">Searching...</h3>
         <p class="text-sm text-gray-400" id="progress-sub"></p>
       </div>
-      <div id="progress-badge" class="text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-700">Running</div>
+      <div class="flex gap-2 items-center">
+        <button id="stop-btn" onclick="stopJob()" class="hidden text-xs border border-red-300 text-red-500 hover:bg-red-50 px-3 py-1 rounded-lg font-semibold transition">Stop</button>
+        <div id="progress-badge" class="text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-700">Running</div>
+      </div>
     </div>
     <div class="bg-gray-950 font-mono text-xs text-green-400 p-4 h-44 overflow-y-auto" id="live-log"></div>
     <div class="p-4 border-t border-gray-100">
@@ -147,6 +150,7 @@ async function startSearch() {
   document.getElementById('progress-sub').textContent = `Google pages ${startPage}–${endPage}`;
   document.getElementById('progress-badge').textContent = 'Running';
   document.getElementById('progress-badge').className = 'text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-700';
+  document.getElementById('stop-btn').classList.remove('hidden');
 
   addLog(`[${now()}] Starting search: "${query}" — pages ${startPage}–${endPage}`);
 
@@ -197,6 +201,7 @@ async function pollJob() {
     if (job.status === 'done' || job.status === 'error') {
       clearInterval(pollTimer);
       document.getElementById('search-btn').disabled = false;
+      document.getElementById('stop-btn').classList.add('hidden');
       document.getElementById('progress-bar').style.width = '100%';
       document.getElementById('progress-badge').textContent = job.status === 'done' ? 'Done' : 'Error';
       document.getElementById('progress-badge').className = `text-xs font-semibold px-3 py-1 rounded-full ${job.status === 'done' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
@@ -290,6 +295,20 @@ function copyEmail(idx, email) {
 function downloadCSV() {
   if (!currentJobId) return;
   window.open(`${API}/job/${currentJobId}/csv`, '_blank');
+}
+
+function stopJob() {
+  clearInterval(pollTimer);
+  currentJobId = null;
+  document.getElementById('search-btn').disabled = false;
+  document.getElementById('stop-btn').classList.add('hidden');
+  document.getElementById('progress-badge').textContent = 'Stopped';
+  document.getElementById('progress-badge').className = 'text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-600';
+  addLog(`[${now()}] ⏹ Search stopped by user — ${document.getElementById('stat-leads').textContent} leads saved`);
+  if (document.getElementById('results-section').innerHTML !== '') {
+    document.getElementById('download-bar').classList.remove('hidden');
+    document.getElementById('download-label').textContent = `${document.getElementById('stat-leads').textContent} leads ready so far — download what was collected`;
+  }
 }
 
 function now() { return new Date().toLocaleTimeString(); }
