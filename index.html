@@ -465,15 +465,16 @@ const spin = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" stroke=
 const checkIcon = '<svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
 
 async function pingServer() {
-  const resp = await fetch(API + '/ping', { signal: AbortSignal.timeout(8000) });
-  return resp.ok;
+  const resp = await fetch(API + '/ping', { signal: AbortSignal.timeout(12000) });
+  if (!resp.ok) throw new Error('non-ok');
+  return true;
 }
 
 async function callVerifyAPI(key) {
   const resp = await fetch(API + '/verify-key', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider: selectedProvider, key }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(35000),
   });
   return resp.json();
 }
@@ -485,17 +486,17 @@ async function verifyKey() {
   btn.innerHTML = spin + ' Checking server...';
   btn.disabled = true;
 
-  // Step 1: ping to confirm server is reachable
+  // Step 1: ping to confirm server is reachable (Railway may cold-start in 15-25s)
   let serverUp = false;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
     try {
       serverUp = await pingServer();
       if (serverUp) break;
     } catch(e) {
-      if (attempt < 3) {
-        showVerifyResult(false, `Server waking up — attempt ${attempt}/3...`);
-        await new Promise(r => setTimeout(r, 6000));
-        btn.innerHTML = spin + ` Retrying (${attempt}/3)...`;
+      if (attempt < 4) {
+        showVerifyResult(false, `Server waking up — attempt ${attempt}/4 (this can take up to 30s on first load)...`);
+        await new Promise(r => setTimeout(r, 7000));
+        btn.innerHTML = spin + ` Retrying (${attempt}/4)...`;
       }
     }
   }
