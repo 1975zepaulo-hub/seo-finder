@@ -461,29 +461,49 @@ function resetVerify() {
   document.getElementById('verify-result').classList.add('hidden');
 }
 
+async function callVerifyAPI(key) {
+  const resp = await fetch(API + '/verify-key', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider: selectedProvider, key })
+  });
+  return resp.json();
+}
+
 async function verifyKey() {
   const key = document.getElementById('api-key-input').value.trim();
   if (!key) { showVerifyResult(false, 'Please paste an API key first.'); return; }
   const btn = document.getElementById('verify-btn');
-  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Verifying...';
+  const spin = '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>';
+  const checkIcon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+  btn.innerHTML = spin + ' Verifying...';
   btn.disabled = true;
+
+  let data;
   try {
-    const resp = await fetch(API + '/verify-key', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: selectedProvider, key })
-    });
-    const data = await resp.json();
-    if (data.ok) {
-      keyVerified = true;
-      showVerifyResult(true, 'Key verified successfully!');
-      document.getElementById('save-btn').disabled = false;
-    } else {
-      showVerifyResult(false, 'Invalid key: ' + (data.error || 'Unknown error'));
-    }
+    data = await callVerifyAPI(key);
   } catch(e) {
-    showVerifyResult(false, 'Could not reach server. Try again.');
+    // First attempt failed — server may be cold-starting. Wait and retry once.
+    showVerifyResult(false, 'Server is waking up — retrying in 5 seconds...');
+    await new Promise(r => setTimeout(r, 5000));
+    btn.innerHTML = spin + ' Retrying...';
+    try {
+      data = await callVerifyAPI(key);
+    } catch(e2) {
+      showVerifyResult(false, 'Cannot reach server. Check your internet connection or try again in a moment.');
+      btn.innerHTML = checkIcon + ' Verify Key';
+      btn.disabled = false;
+      return;
+    }
   }
-  btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Verify Key';
+
+  if (data.ok) {
+    keyVerified = true;
+    showVerifyResult(true, 'Key verified successfully!');
+    document.getElementById('save-btn').disabled = false;
+  } else {
+    showVerifyResult(false, (data.error || 'Key rejected by provider') + ' — double-check the key and try again.');
+  }
+  btn.innerHTML = checkIcon + ' Verify Key';
   btn.disabled = false;
 }
 
