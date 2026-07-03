@@ -514,7 +514,11 @@ function renderLeads(leads) {
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 mb-1.5 flex-wrap">
             <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">Page ${l.googlePage}</span>
-            ${l.emails && l.emails.length ? '<span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">&#10003; Has Email</span>' : '<span class="text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">No Email</span>'}
+            ${l.emails && l.emails.length
+              ? (l.emailSource === 'facebook'
+                  ? '<span class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">&#10003; Email via Facebook</span>'
+                  : '<span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">&#10003; Has Email</span>')
+              : '<span class="text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">No Email</span>'}
             ${!l.hasSSL ? '<span class="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">No SSL</span>' : ''}
             ${l.seoScore < 50 ? '<span class="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">Weak SEO</span>' : ''}
           </div>
@@ -544,6 +548,7 @@ function renderLeads(leads) {
         <div><div class="text-slate-400 mb-0.5">CLS</div><div class="font-semibold text-slate-700">${l.cls}</div></div>
         <div><div class="text-slate-400 mb-0.5">Email</div><div class="font-semibold">${emailLinks}</div></div>
         <div><div class="text-slate-400 mb-0.5">Phone</div><div class="font-semibold text-slate-700">${l.phones.length ? l.phones[0] : '<span class="text-slate-300">—</span>'}</div></div>
+        ${l.facebookUrl ? `<div class="col-span-2 md:col-span-1"><div class="text-slate-400 mb-0.5">Facebook</div><a href="${l.facebookUrl}" target="_blank" class="text-xs font-semibold text-blue-500 hover:underline truncate block">${l.facebookUrl.replace('https://','').replace('www.facebook.com/','fb/')}</a></div>` : ''}
       </div>
 
       <!-- Issues -->

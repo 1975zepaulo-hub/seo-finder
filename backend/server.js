@@ -136,31 +136,48 @@ async function runPageSpeed(url) {
 }
 
 // ── 3. Crawl for contacts ────────────────────────────────────────────────────
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const EMAIL_SKIP = ["sentry","example","wixpress","cloudflare","schema.org","w3.org","googleapis","jquery","facebook","instagram","twitter","youtu"];
+
+function extractEmails(html, existing = []) {
+  return (html.match(EMAIL_REGEX) || []).filter(e =>
+    !EMAIL_SKIP.some(s => e.toLowerCase().includes(s)) && !existing.includes(e)
+  );
+}
+
 async function crawlSite(url) {
-  const result = { emails: [], phones: [], hasH1: false, hasMetaDesc: false, pageTitle: "", crawlError: false };
+  const result = { emails: [], phones: [], hasH1: false, hasMetaDesc: false, pageTitle: "", facebookUrl: null, crawlError: false };
   const pages = [url, url.replace(/\/?$/, "/contact"), url.replace(/\/?$/, "/about")];
 
   for (const pageUrl of pages) {
     try {
       const resp = await axios.get(pageUrl, {
         timeout: 10000,
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; SEOBot/1.0)" },
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36" },
         maxRedirects: 5,
       });
-      const $ = cheerio.load(resp.data);
+      const html = resp.data;
+      const $ = cheerio.load(html);
 
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-      (resp.data.match(emailRegex) || []).forEach((e) => {
-        if (!e.includes("sentry") && !e.includes("example") && !result.emails.includes(e))
-          result.emails.push(e);
-      });
+      extractEmails(html, result.emails).forEach(e => result.emails.push(e));
 
       const phoneRegex = /(\+?[\d\s\-().]{7,})/g;
-      (resp.data.match(phoneRegex) || []).forEach((p) => {
+      (html.match(phoneRegex) || []).forEach((p) => {
         const digits = p.replace(/\D/g, "");
         if (digits.length >= 7 && digits.length <= 15 && !result.phones.includes(p.trim()))
           result.phones.push(p.trim());
       });
+
+      // Grab Facebook page link if present
+      if (!result.facebookUrl) {
+        $('a[href*="facebook.com"]').each((_, el) => {
+          const href = $(el).attr("href") || "";
+          // Only business pages (not share links or generic FB homepage)
+          if (href.match(/facebook\.com\/(?!sharer|share|login|home|watch|groups|events)[\w.]+/)) {
+            result.facebookUrl = href.split("?")[0].replace(/\/$/, "");
+          }
+        });
+      }
 
       if (pageUrl === url) {
         result.hasH1 = $("h1").length > 0;
@@ -171,7 +188,41 @@ async function crawlSite(url) {
       if (pageUrl === url) result.crawlError = true;
     }
   }
+
+  // If no email found but Facebook link exists — try scraping it
+  if (!result.emails.length && result.facebookUrl) {
+    const fbEmails = await crawlFacebook(result.facebookUrl);
+    fbEmails.forEach(e => result.emails.push(e));
+    if (fbEmails.length) result.emailSource = "facebook";
+  }
+
   return result;
+}
+
+// ── 3b. Crawl Facebook About page for email ──────────────────────────────────
+async function crawlFacebook(fbUrl) {
+  const aboutUrl = fbUrl + "/about";
+  const emails = [];
+
+  // Try the mobile version — less JS-heavy, more raw content
+  const mobileUrl = aboutUrl.replace("www.facebook.com", "m.facebook.com");
+
+  for (const tryUrl of [mobileUrl, aboutUrl]) {
+    try {
+      const resp = await axios.get(tryUrl, {
+        timeout: 12000,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        maxRedirects: 3,
+      });
+      extractEmails(resp.data, emails).forEach(e => emails.push(e));
+      if (emails.length) break;
+    } catch (_) {}
+  }
+
+  return emails;
 }
 
 // ── 4. Generate TWO pitches: SEO email + Design email ───────────────────────
@@ -417,7 +468,8 @@ async function runJob(jobId, query, startPage, endPage) {
 
       // Step 2: run PageSpeed for all sites (email or not)
       const hasEmail = crawl.emails.length > 0;
-      job.log(`  ↳ [${idx}] ${hasEmail ? 'Email: ' + crawl.emails[0] : 'No email'} — auditing...`);
+      const emailSrc = hasEmail ? (crawl.emailSource === 'facebook' ? `Email via Facebook: ${crawl.emails[0]}` : `Email: ${crawl.emails[0]}`) : 'No email found';
+      job.log(`  ↳ [${idx}] ${emailSrc} — auditing...`);
       const pageSpeed = await runPageSpeed(r.url);
 
       const ps = pageSpeed || {
@@ -452,6 +504,8 @@ async function runJob(jobId, query, startPage, endPage) {
         phones: crawl.phones,
         hasH1: crawl.hasH1,
         hasMetaDesc: crawl.hasMetaDesc,
+        facebookUrl: crawl.facebookUrl || null,
+        emailSource: crawl.emailSource || "website",
         seoPitch,
         designPitch,
       });
