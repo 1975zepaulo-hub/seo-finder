@@ -8,30 +8,25 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   * { font-family: 'Inter', sans-serif; }
-  .terminal { font-family: 'Courier New', monospace; }
   .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); }
   .card-hover { transition: all 0.2s ease; }
   .card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(0,0,0,0.10); }
   .pulse-dot { animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .log-scroll::-webkit-scrollbar { width: 4px; }
-  .log-scroll::-webkit-scrollbar-track { background: #0f172a; }
-  .log-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
   .fade-in { animation: fadeIn 0.4s ease; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .itag { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px; }
-  .tab-btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-  .tab-btn.active { background: #1e1b4b; color: #a78bfa; }
-  .tab-btn:not(.active) { color: #94a3b8; }
-  .tab-btn:not(.active):hover { color: #64748b; }
-  .niche-chip { font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; background:rgba(255,255,255,0.08); color:#94a3b8; border:1px solid rgba(255,255,255,0.12); cursor:pointer; transition:all 0.15s; }
-  .niche-chip:hover { background:rgba(139,92,246,0.25); color:#c4b5fd; border-color:#7c3aed; }
-  select option { background:#1e293b; color:#e2e8f0; }
+  .tab-btn { padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s; }
+  .tab-btn.active { background:#1e1b4b;color:#a78bfa; }
+  .tab-btn:not(.active) { color:#94a3b8; }
+  .niche-chip { font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.12);cursor:pointer;transition:all 0.15s; }
+  .niche-chip:hover { background:rgba(139,92,246,0.25);color:#c4b5fd;border-color:#7c3aed; }
+  select option { background:#1e293b;color:#e2e8f0; }
+  .progress-ring { transition: stroke-dashoffset 0.5s ease; }
 </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
 
-<!-- Nav -->
 <nav class="bg-white border-b border-slate-100 sticky top-0 z-50">
   <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
@@ -44,9 +39,9 @@
       </div>
     </div>
     <div class="hidden md:flex items-center gap-6 text-xs text-slate-400 font-medium">
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Real PageSpeed audits</span>
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>Emails only</span>
-      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block"></span>PDF report + 2 pitches</span>
+      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Real audits</span>
+      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>Email leads only</span>
+      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block"></span>PDF + 2 pitches</span>
     </div>
   </div>
 </nav>
@@ -58,24 +53,21 @@
       Find businesses that need your help<br/>
       <span class="text-violet-400">and their email address</span>
     </h1>
-    <p class="text-slate-400 text-sm max-w-xl mx-auto">
-      Pick a service niche and a city — we search Google pages 3-10, audit every site, extract emails, generate a PDF report and two pitches per lead.
-    </p>
+    <p class="text-slate-400 text-sm max-w-xl mx-auto">Pick a niche and city — we search Google pages 3-10, audit every site, extract emails, and generate a PDF report + two pitches per lead.</p>
   </div>
 
   <div class="max-w-3xl mx-auto">
     <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-5">
 
-      <!-- Row 1: Niche -->
+      <!-- Niche -->
       <div class="mb-3">
-        <label class="block text-xs font-medium text-slate-300 mb-1.5">What service do they need? <span class="text-slate-500">(your niche)</span></label>
+        <label class="block text-xs font-medium text-slate-300 mb-1.5">What service do they need?</label>
         <div class="relative">
-          <input id="niche" type="text" placeholder="e.g. plumber, dentist, solar installer, web designer, accountant..."
+          <input id="niche" type="text" placeholder="e.g. plumber, dentist, solar installer, web designer..."
             class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-            oninput="filterNiches(this.value)" onkeydown="if(event.key==='Enter') document.getElementById('city').focus()" />
+            oninput="filterNiches(this.value); buildQueryPreview()" onkeydown="if(event.key==='Enter') document.getElementById('country').focus()" />
           <div id="niche-suggestions" class="hidden absolute z-20 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto"></div>
         </div>
-        <!-- Quick niche chips -->
         <div class="flex flex-wrap gap-1.5 mt-2">
           <span class="text-xs text-slate-500 mr-1 mt-0.5">Popular:</span>
           <button onclick="setNiche('Plumber')" class="niche-chip">Plumber</button>
@@ -86,19 +78,19 @@
           <button onclick="setNiche('Web designer')" class="niche-chip">Web designer</button>
           <button onclick="setNiche('Accountant')" class="niche-chip">Accountant</button>
           <button onclick="setNiche('Hair salon')" class="niche-chip">Hair salon</button>
-          <button onclick="setNiche('Restaurant')" class="niche-chip">Restaurant</button>
+          <button onclick="setNiche('Roofing contractor')" class="niche-chip">Roofing</button>
           <button onclick="setNiche('Lawyer')" class="niche-chip">Lawyer</button>
           <button onclick="setNiche('Gym')" class="niche-chip">Gym</button>
-          <button onclick="setNiche('Roofing contractor')" class="niche-chip">Roofing</button>
+          <button onclick="setNiche('Restaurant')" class="niche-chip">Restaurant</button>
         </div>
       </div>
 
-      <!-- Row 2: Country + City -->
-      <div class="grid grid-cols-2 gap-3 mb-3">
+      <!-- Location row -->
+      <div class="grid grid-cols-3 gap-3 mb-3" id="location-row">
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1.5">Country</label>
-          <select id="country" onchange="updateCities()" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-            <option value="">-- Select country --</option>
+          <select id="country" onchange="onCountryChange()" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            <option value="">-- Country --</option>
             <optgroup label="Africa">
               <option value="Nigeria">🇳🇬 Nigeria</option>
               <option value="Ghana">🇬🇭 Ghana</option>
@@ -108,6 +100,8 @@
               <option value="Uganda">🇺🇬 Uganda</option>
               <option value="Ethiopia">🇪🇹 Ethiopia</option>
               <option value="Egypt">🇪🇬 Egypt</option>
+              <option value="Cameroon">🇨🇲 Cameroon</option>
+              <option value="Senegal">🇸🇳 Senegal</option>
             </optgroup>
             <optgroup label="UK & Europe">
               <option value="United Kingdom">🇬🇧 United Kingdom</option>
@@ -134,9 +128,16 @@
             </optgroup>
           </select>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1.5">City / Region</label>
-          <select id="city" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+        <!-- US State (shown only for USA) -->
+        <div id="state-col" class="hidden">
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">State</label>
+          <select id="state" onchange="updateCities()" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            <option value="">-- State --</option>
+          </select>
+        </div>
+        <div id="city-col">
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">City</label>
+          <select id="city" onchange="buildQueryPreview()" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
             <option value="">-- Select country first --</option>
           </select>
         </div>
@@ -144,21 +145,15 @@
 
       <!-- Query preview -->
       <div id="query-preview" class="hidden mb-3 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 flex items-center justify-between">
-        <div>
-          <span class="text-xs text-slate-400">Search query:</span>
-          <span id="query-text" class="text-sm text-violet-300 font-semibold ml-2"></span>
-        </div>
-        <button onclick="document.getElementById('query-preview').classList.add('hidden'); document.getElementById('custom-query-row').classList.remove('hidden')" class="text-xs text-slate-500 hover:text-slate-300">Edit manually</button>
+        <div><span class="text-xs text-slate-400">Search query:</span><span id="query-text" class="text-sm text-violet-300 font-semibold ml-2"></span></div>
+        <button onclick="document.getElementById('query-preview').classList.add('hidden');document.getElementById('custom-row').classList.remove('hidden')" class="text-xs text-slate-500 hover:text-slate-300">Edit manually</button>
       </div>
-
-      <!-- Manual override (hidden by default) -->
-      <div id="custom-query-row" class="hidden mb-3">
-        <label class="block text-xs font-medium text-slate-300 mb-1.5">Custom search query</label>
-        <input id="custom-query" type="text" placeholder="Type exactly what to search on Google..."
+      <div id="custom-row" class="hidden mb-3">
+        <input id="custom-query" type="text" placeholder="Type custom Google search query..."
           class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
       </div>
 
-      <!-- Row 3: Pages + Search -->
+      <!-- Pages + Search -->
       <div class="flex flex-wrap gap-3 items-end justify-between">
         <div class="flex gap-3">
           <div>
@@ -187,33 +182,66 @@
         </button>
       </div>
     </div>
-    <p class="text-center text-slate-500 text-xs mt-3">All audited leads shown &mdash; email leads highlighted for direct outreach</p>
+    <p class="text-center text-slate-500 text-xs mt-3">Only leads with a contactable email are shown &mdash; includes website and Facebook email lookup</p>
   </div>
 </div>
 
 <div class="max-w-6xl mx-auto px-6 py-8">
 
-  <!-- Progress -->
+  <!-- Progress (clean, no log) -->
   <div id="progress-section" class="hidden mb-8 fade-in">
-    <div class="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800">
-      <div class="px-5 py-4 flex items-center justify-between border-b border-slate-800">
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="font-bold text-slate-800 text-base" id="progress-title">Searching...</div>
+          <div class="text-sm text-slate-400 mt-0.5" id="progress-sub"></div>
+        </div>
         <div class="flex items-center gap-3">
-          <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-400 pulse-dot"></div>
-          <div>
-            <div class="text-white font-semibold text-sm" id="progress-title">Searching...</div>
-            <div class="text-slate-400 text-xs" id="progress-sub"></div>
+          <button id="stop-btn" onclick="stopJob()" class="hidden text-xs bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 px-4 py-2 rounded-lg font-semibold transition">&#9632; Stop</button>
+          <span id="progress-badge" class="text-xs font-bold px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700">Running</span>
+        </div>
+      </div>
+
+      <!-- Big progress display -->
+      <div class="flex items-center gap-6 mb-5">
+        <div class="relative w-20 h-20 flex-shrink-0">
+          <svg class="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="#e2e8f0" stroke-width="8"/>
+            <circle id="progress-circle" cx="40" cy="40" r="34" fill="none" stroke="url(#grad)" stroke-width="8"
+              stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6" class="progress-ring"/>
+            <defs>
+              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#7c3aed"/>
+                <stop offset="100%" style="stop-color:#2563eb"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span id="progress-pct" class="text-lg font-bold text-slate-800">0%</span>
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <span id="progress-count" class="text-slate-400 text-xs font-mono">0 audited</span>
-          <button id="stop-btn" onclick="stopJob()" class="hidden text-xs bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded-lg font-semibold transition">&#9632; Stop</button>
-          <span id="progress-badge" class="text-xs font-bold px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400">Running</span>
+
+        <div class="flex-1">
+          <div class="grid grid-cols-3 gap-4 mb-3">
+            <div class="text-center bg-slate-50 rounded-xl p-3">
+              <div class="text-xl font-bold text-slate-800" id="prog-crawled">0</div>
+              <div class="text-xs text-slate-400">Sites crawled</div>
+            </div>
+            <div class="text-center bg-emerald-50 rounded-xl p-3">
+              <div class="text-xl font-bold text-emerald-600" id="prog-emails">0</div>
+              <div class="text-xs text-slate-400">Emails found</div>
+            </div>
+            <div class="text-center bg-violet-50 rounded-xl p-3">
+              <div class="text-xl font-bold text-violet-600" id="prog-leads">0</div>
+              <div class="text-xs text-slate-400">Leads ready</div>
+            </div>
+          </div>
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div id="progress-bar" class="h-2 bg-gradient-to-r from-violet-500 to-blue-500 rounded-full transition-all duration-500" style="width:0%"></div>
+          </div>
+          <div class="text-xs text-slate-400 mt-1.5" id="progress-status">Getting started...</div>
         </div>
       </div>
-      <div class="h-1 bg-slate-800">
-        <div id="progress-bar" class="h-1 bg-gradient-to-r from-violet-500 to-blue-500 transition-all duration-500" style="width:0%"></div>
-      </div>
-      <div class="terminal text-xs text-green-400 p-4 h-40 overflow-y-auto log-scroll" id="live-log"></div>
     </div>
   </div>
 
@@ -222,7 +250,7 @@
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
       <div class="text-xs font-medium text-slate-400 mb-1">Total leads</div>
       <div class="text-2xl font-bold text-slate-800" id="stat-leads">0</div>
-      <div class="text-xs text-slate-300 mt-0.5" id="stat-found-sub">of 0 crawled</div>
+      <div class="text-xs text-slate-300 mt-0.5" id="stat-crawled-sub">of 0 crawled</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
       <div class="text-xs font-medium text-slate-400 mb-1">With email</div>
@@ -230,14 +258,14 @@
       <div class="text-xs text-slate-300 mt-0.5">direct outreach</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-      <div class="text-xs font-medium text-slate-400 mb-1">No email</div>
-      <div class="text-2xl font-bold text-amber-500" id="stat-noemail">0</div>
-      <div class="text-xs text-slate-300 mt-0.5">via contact form</div>
+      <div class="text-xs font-medium text-slate-400 mb-1">Via Facebook</div>
+      <div class="text-2xl font-bold text-blue-500" id="stat-fb">0</div>
+      <div class="text-xs text-slate-300 mt-0.5">from FB profile</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
       <div class="text-xs font-medium text-slate-400 mb-1">Avg SEO score</div>
       <div class="text-2xl font-bold text-orange-500" id="stat-seo">--</div>
-      <div class="text-xs text-slate-300 mt-0.5">all audited leads</div>
+      <div class="text-xs text-slate-300 mt-0.5">all leads</div>
     </div>
   </div>
 
@@ -245,7 +273,7 @@
   <div id="download-bar" class="hidden bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-center justify-between">
     <div>
       <div class="text-sm font-semibold text-emerald-800" id="download-label"></div>
-      <div class="text-xs text-emerald-600 mt-0.5">CSV includes scores, issues, emails, both pitches</div>
+      <div class="text-xs text-emerald-600 mt-0.5">CSV includes scores, issues, emails, phones, both pitches</div>
     </div>
     <button onclick="downloadCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition flex items-center gap-2 shadow-sm">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -253,66 +281,148 @@
     </button>
   </div>
 
-  <!-- Results -->
   <div id="results-section" class="space-y-5"></div>
 </div>
 
 <script>
 const API = 'https://seo-finder-production.up.railway.app/api';
+let currentJobId = null;
+let pollTimer = null;
 
-// ── Location data ────────────────────────────────────────────────────────────
+// ── Location data ─────────────────────────────────────────────────────────────
+const US_STATES = {
+  'Alabama': ['Birmingham','Montgomery','Huntsville','Mobile','Tuscaloosa'],
+  'Alaska': ['Anchorage','Fairbanks','Juneau','Sitka','Ketchikan'],
+  'Arizona': ['Phoenix','Tucson','Scottsdale','Mesa','Chandler','Tempe','Glendale','Gilbert','Peoria'],
+  'Arkansas': ['Little Rock','Fort Smith','Fayetteville','Springdale','Jonesboro'],
+  'California': ['Los Angeles','San Francisco','San Diego','San Jose','Sacramento','Fresno','Oakland','Long Beach','Bakersfield','Anaheim','Santa Ana','Riverside','Stockton','Irvine','Chula Vista'],
+  'Colorado': ['Denver','Colorado Springs','Aurora','Fort Collins','Lakewood','Thornton','Pueblo','Boulder'],
+  'Connecticut': ['Bridgeport','New Haven','Hartford','Stamford','Waterbury','Norwalk'],
+  'Delaware': ['Wilmington','Dover','Newark','Middletown'],
+  'Florida': ['Miami','Orlando','Tampa','Jacksonville','Fort Lauderdale','St. Petersburg','Hialeah','Tallahassee','Port St. Lucie','Cape Coral','Pembroke Pines','Hollywood','Gainesville','Miramar','Coral Springs'],
+  'Georgia': ['Atlanta','Augusta','Columbus','Macon','Savannah','Athens','Sandy Springs','Roswell','Albany'],
+  'Hawaii': ['Honolulu','Pearl City','Hilo','Kailua','Kapolei'],
+  'Idaho': ['Boise','Meridian','Nampa','Idaho Falls','Pocatello'],
+  'Illinois': ['Chicago','Aurora','Rockford','Joliet','Naperville','Springfield','Peoria','Elgin','Waukegan'],
+  'Indiana': ['Indianapolis','Fort Wayne','Evansville','South Bend','Carmel','Fishers','Hammond','Muncie'],
+  'Iowa': ['Des Moines','Cedar Rapids','Davenport','Sioux City','Iowa City','Waterloo'],
+  'Kansas': ['Wichita','Overland Park','Kansas City','Topeka','Olathe','Lawrence'],
+  'Kentucky': ['Louisville','Lexington','Bowling Green','Owensboro','Covington'],
+  'Louisiana': ['New Orleans','Baton Rouge','Shreveport','Metairie','Lafayette','Lake Charles'],
+  'Maine': ['Portland','Lewiston','Bangor','South Portland','Auburn'],
+  'Maryland': ['Baltimore','Frederick','Rockville','Gaithersburg','Bowie','Hagerstown','Annapolis'],
+  'Massachusetts': ['Boston','Worcester','Springfield','Cambridge','Lowell','Brockton','New Bedford','Fall River','Lynn'],
+  'Michigan': ['Detroit','Grand Rapids','Warren','Sterling Heights','Ann Arbor','Lansing','Flint','Dearborn','Livonia','Clinton Township'],
+  'Minnesota': ['Minneapolis','Saint Paul','Rochester','Bloomington','Duluth','Brooklyn Park','Plymouth','Maple Grove'],
+  'Mississippi': ['Jackson','Gulfport','Southaven','Hattiesburg','Biloxi'],
+  'Missouri': ['Kansas City','Saint Louis','Springfield','Columbia','Independence','Lee\'s Summit','O\'Fallon','Saint Joseph'],
+  'Montana': ['Billings','Missoula','Great Falls','Bozeman','Butte'],
+  'Nebraska': ['Omaha','Lincoln','Bellevue','Grand Island','Kearney'],
+  'Nevada': ['Las Vegas','Henderson','Reno','North Las Vegas','Sparks','Carson City'],
+  'New Hampshire': ['Manchester','Nashua','Concord','Dover','Rochester'],
+  'New Jersey': ['Newark','Jersey City','Paterson','Elizabeth','Edison','Woodbridge','Lakewood','Toms River','Trenton'],
+  'New Mexico': ['Albuquerque','Las Cruces','Rio Rancho','Santa Fe','Roswell'],
+  'New York': ['New York City','Buffalo','Rochester','Yonkers','Syracuse','Albany','New Rochelle','Mount Vernon','Schenectady','Utica'],
+  'North Carolina': ['Charlotte','Raleigh','Greensboro','Durham','Winston-Salem','Fayetteville','Cary','Wilmington','High Point','Concord'],
+  'North Dakota': ['Fargo','Bismarck','Grand Forks','Minot'],
+  'Ohio': ['Columbus','Cleveland','Cincinnati','Toledo','Akron','Dayton','Parma','Canton','Youngstown','Lorain'],
+  'Oklahoma': ['Oklahoma City','Tulsa','Norman','Broken Arrow','Edmond','Lawton'],
+  'Oregon': ['Portland','Salem','Eugene','Gresham','Hillsboro','Beaverton','Bend','Medford'],
+  'Pennsylvania': ['Philadelphia','Pittsburgh','Allentown','Erie','Reading','Scranton','Bethlehem','Lancaster','Harrisburg'],
+  'Rhode Island': ['Providence','Cranston','Warwick','Pawtucket','East Providence'],
+  'South Carolina': ['Columbia','Charleston','North Charleston','Mount Pleasant','Rock Hill','Greenville'],
+  'South Dakota': ['Sioux Falls','Rapid City','Aberdeen','Brookings'],
+  'Tennessee': ['Nashville','Memphis','Knoxville','Chattanooga','Clarksville','Murfreesboro','Franklin','Jackson'],
+  'Texas': ['Houston','San Antonio','Dallas','Austin','Fort Worth','El Paso','Arlington','Corpus Christi','Plano','Laredo','Lubbock','Garland','Irving','Amarillo','Grand Prairie','Fremont','McKinney','Frisco','Killeen','McAllen'],
+  'Utah': ['Salt Lake City','West Valley City','Provo','West Jordan','Orem','Sandy','Ogden','St. George'],
+  'Vermont': ['Burlington','South Burlington','Rutland','Barre','Montpelier'],
+  'Virginia': ['Virginia Beach','Norfolk','Chesapeake','Richmond','Newport News','Alexandria','Hampton','Roanoke','Portsmouth'],
+  'Washington': ['Seattle','Spokane','Tacoma','Vancouver','Bellevue','Kent','Everett','Renton','Kirkland','Bellingham'],
+  'West Virginia': ['Charleston','Huntington','Morgantown','Parkersburg'],
+  'Wisconsin': ['Milwaukee','Madison','Green Bay','Kenosha','Racine','Appleton','Waukesha','Oshkosh'],
+  'Wyoming': ['Cheyenne','Casper','Laramie','Gillette','Rock Springs'],
+};
+
 const CITIES = {
-  'Nigeria': ['Lagos','Abuja','Port Harcourt','Kano','Ibadan','Benin City','Kaduna','Enugu','Onitsha','Warri','Abeokuta','Ilorin','Jos','Owerri','Uyo','Calabar','Maiduguri','Zaria','Asaba','Akure'],
-  'Ghana': ['Accra','Kumasi','Tamale','Sekondi-Takoradi','Ashaiman','Cape Coast','Obuasi','Teshie','Tema','Madina'],
-  'Kenya': ['Nairobi','Mombasa','Nakuru','Kisumu','Eldoret','Thika','Malindi','Kitale','Garissa','Kakamega'],
-  'South Africa': ['Johannesburg','Cape Town','Durban','Pretoria','Port Elizabeth','Bloemfontein','East London','Polokwane','Nelspruit','Kimberley'],
+  'Nigeria': ['Lagos','Abuja','Port Harcourt','Kano','Ibadan','Benin City','Kaduna','Enugu','Onitsha','Warri','Abeokuta','Ilorin','Jos','Owerri','Uyo','Calabar','Maiduguri','Asaba','Akure','Ado-Ekiti'],
+  'Ghana': ['Accra','Kumasi','Tamale','Sekondi-Takoradi','Cape Coast','Obuasi','Tema','Madina','Sunyani'],
+  'Kenya': ['Nairobi','Mombasa','Nakuru','Kisumu','Eldoret','Thika','Malindi','Kitale','Garissa'],
+  'South Africa': ['Johannesburg','Cape Town','Durban','Pretoria','Port Elizabeth','Bloemfontein','East London','Polokwane','Nelspruit'],
   'Tanzania': ['Dar es Salaam','Mwanza','Arusha','Dodoma','Mbeya','Morogoro','Tanga','Zanzibar'],
-  'Uganda': ['Kampala','Gulu','Lira','Mbarara','Jinja','Mbale','Mukono','Kasese'],
+  'Uganda': ['Kampala','Gulu','Lira','Mbarara','Jinja','Mbale','Mukono'],
   'Ethiopia': ['Addis Ababa','Dire Dawa','Mekelle','Adama','Hawassa','Bahir Dar','Gondar'],
-  'Egypt': ['Cairo','Alexandria','Giza','Shubra El Kheima','Port Said','Suez','Luxor'],
-  'United Kingdom': ['London','Manchester','Birmingham','Leeds','Glasgow','Liverpool','Bristol','Sheffield','Edinburgh','Cardiff','Leicester','Coventry','Bradford','Nottingham','Belfast'],
-  'Ireland': ['Dublin','Cork','Limerick','Galway','Waterford','Drogheda','Dundalk'],
-  'Germany': ['Berlin','Hamburg','Munich','Cologne','Frankfurt','Stuttgart','Düsseldorf','Leipzig','Dortmund','Essen'],
-  'France': ['Paris','Marseille','Lyon','Toulouse','Nice','Nantes','Strasbourg','Montpellier','Bordeaux','Lille'],
-  'Netherlands': ['Amsterdam','Rotterdam','The Hague','Utrecht','Eindhoven','Groningen','Tilburg'],
-  'Spain': ['Madrid','Barcelona','Valencia','Seville','Zaragoza','Málaga','Murcia','Palma','Las Palmas','Bilbao'],
-  'Italy': ['Rome','Milan','Naples','Turin','Palermo','Genoa','Bologna','Florence','Venice'],
-  'USA': ['New York, NY','Los Angeles, CA','Chicago, IL','Houston, TX','Phoenix, AZ','Philadelphia, PA','San Antonio, TX','San Diego, CA','Dallas, TX','San Jose, CA','Austin, TX','Jacksonville, FL','Fort Worth, TX','Columbus, OH','Charlotte, NC','Indianapolis, IN','San Francisco, CA','Seattle, WA','Denver, CO','Nashville, TN','Oklahoma City, OK','Las Vegas, NV','Portland, OR','Memphis, TN','Louisville, KY','Atlanta, GA','Miami, FL','Minneapolis, MN','Tampa, FL','New Orleans, LA','Detroit, MI','Boston, MA','Baltimore, MD','El Paso, TX','Washington DC','Milwaukee, WI','Albuquerque, NM','Tucson, AZ','Fresno, CA','Sacramento, CA'],
-  'Canada': ['Toronto, ON','Montreal, QC','Vancouver, BC','Calgary, AB','Edmonton, AB','Ottawa, ON','Winnipeg, MB','Quebec City, QC','Hamilton, ON','Kitchener, ON','London, ON','Victoria, BC','Halifax, NS'],
-  'UAE': ['Dubai','Abu Dhabi','Sharjah','Al Ain','Ajman','Ras Al Khaimah'],
-  'Saudi Arabia': ['Riyadh','Jeddah','Mecca','Medina','Dammam','Khobar','Tabuk'],
-  'Qatar': ['Doha','Al Rayyan','Al Wakrah','Al Khor'],
-  'Australia': ['Sydney, NSW','Melbourne, VIC','Brisbane, QLD','Perth, WA','Adelaide, SA','Gold Coast, QLD','Canberra, ACT','Newcastle, NSW','Wollongong, NSW','Hobart, TAS'],
-  'India': ['Mumbai','Delhi','Bangalore','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad','Jaipur','Surat','Lucknow','Kanpur','Nagpur','Indore','Bhopal'],
+  'Egypt': ['Cairo','Alexandria','Giza','Port Said','Suez','Luxor','Aswan'],
+  'Cameroon': ['Douala','Yaoundé','Garoua','Bamenda','Maroua'],
+  'Senegal': ['Dakar','Thiès','Saint-Louis','Kaolack','Ziguinchor'],
+  'United Kingdom': ['London','Manchester','Birmingham','Leeds','Glasgow','Liverpool','Bristol','Sheffield','Edinburgh','Cardiff','Leicester','Coventry','Nottingham','Belfast'],
+  'Ireland': ['Dublin','Cork','Limerick','Galway','Waterford'],
+  'Germany': ['Berlin','Hamburg','Munich','Cologne','Frankfurt','Stuttgart','Düsseldorf','Leipzig'],
+  'France': ['Paris','Marseille','Lyon','Toulouse','Nice','Nantes','Bordeaux','Lille'],
+  'Netherlands': ['Amsterdam','Rotterdam','The Hague','Utrecht','Eindhoven'],
+  'Spain': ['Madrid','Barcelona','Valencia','Seville','Bilbao','Málaga'],
+  'Italy': ['Rome','Milan','Naples','Turin','Florence','Venice','Bologna'],
+  'Canada': ['Toronto, ON','Montreal, QC','Vancouver, BC','Calgary, AB','Edmonton, AB','Ottawa, ON','Winnipeg, MB','Quebec City, QC','Hamilton, ON','Victoria, BC','Halifax, NS'],
+  'UAE': ['Dubai','Abu Dhabi','Sharjah','Al Ain','Ajman'],
+  'Saudi Arabia': ['Riyadh','Jeddah','Mecca','Medina','Dammam'],
+  'Qatar': ['Doha','Al Rayyan','Al Wakrah'],
+  'Australia': ['Sydney, NSW','Melbourne, VIC','Brisbane, QLD','Perth, WA','Adelaide, SA','Gold Coast, QLD','Canberra, ACT','Newcastle, NSW'],
+  'India': ['Mumbai','Delhi','Bangalore','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad','Jaipur','Surat','Lucknow'],
   'Singapore': ['Singapore'],
 };
 
 const NICHES = [
-  'Plumber','Electrician','Roofer','HVAC contractor','Pest control','Landscaper','Painter','Carpenter','Flooring installer','Pool cleaner',
+  'Plumber','Electrician','Roofer','HVAC contractor','Pest control','Landscaper','Painter','Carpenter','Flooring installer','Pool cleaner','Locksmith','Cleaning company','Security company','CCTV installer',
   'Dentist','Doctor','Optician','Physiotherapist','Chiropractor','Pharmacy','Veterinarian',
-  'Accountant','Solicitor / Lawyer','Financial advisor','Insurance broker','Mortgage broker',
-  'Restaurant','Café','Bakery','Catering company','Food delivery',
+  'Accountant','Solicitor','Lawyer','Financial advisor','Insurance broker','Mortgage broker',
+  'Restaurant','Café','Bakery','Catering company',
   'Hair salon','Barbershop','Nail salon','Spa','Beauty clinic','Tattoo studio',
   'Gym','Personal trainer','Yoga studio','Pilates studio',
   'Web designer','Graphic designer','Photographer','Videographer','Social media agency','SEO agency','Digital marketing agency',
-  'Driving school','Tutoring centre','Language school','Childcare / Nursery',
-  'Real estate agent','Property management company','Interior designer','Architect',
-  'Solar panel installer','CCTV installer','Locksmith','Cleaning company','Security company',
-  'Car mechanic','Auto body shop','Car wash','Driving school',
+  'Driving school','Tutoring centre','Language school','Childcare',
+  'Real estate agent','Property management','Interior designer','Architect',
+  'Solar panel installer','Car mechanic','Auto body shop','Car wash',
   'Event planner','Wedding venue','DJ','Florist',
-  'Hotel','Guesthouse','Short-let apartment','Travel agency',
+  'Hotel','Guesthouse','Travel agency',
   'Printing company','Signage company','Courier service','Laundry service',
 ];
 
-function updateCities() {
+function onCountryChange() {
   const country = document.getElementById('country').value;
-  const citySelect = document.getElementById('city');
-  citySelect.innerHTML = '<option value="">-- Select city --</option>';
-  if (country && CITIES[country]) {
-    CITIES[country].forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c; opt.textContent = c;
-      citySelect.appendChild(opt);
+  const stateCol = document.getElementById('state-col');
+  const stateEl = document.getElementById('state');
+  const cityEl = document.getElementById('city');
+
+  cityEl.innerHTML = '<option value="">-- Select --</option>';
+  stateEl.innerHTML = '<option value="">-- State --</option>';
+
+  if (country === 'USA') {
+    stateCol.classList.remove('hidden');
+    document.getElementById('location-row').classList.remove('grid-cols-3');
+    document.getElementById('location-row').classList.add('grid-cols-3');
+    Object.keys(US_STATES).sort().forEach(s => {
+      const o = document.createElement('option'); o.value = s; o.textContent = s;
+      stateEl.appendChild(o);
+    });
+  } else {
+    stateCol.classList.add('hidden');
+    if (CITIES[country]) {
+      CITIES[country].forEach(c => {
+        const o = document.createElement('option'); o.value = c; o.textContent = c;
+        cityEl.appendChild(o);
+      });
+    }
+  }
+  buildQueryPreview();
+}
+
+function updateCities() {
+  const state = document.getElementById('state').value;
+  const cityEl = document.getElementById('city');
+  cityEl.innerHTML = '<option value="">-- City --</option>';
+  if (state && US_STATES[state]) {
+    US_STATES[state].forEach(c => {
+      const o = document.createElement('option'); o.value = c + ', ' + state.substring(0,2).toUpperCase(); o.textContent = c;
+      cityEl.appendChild(o);
     });
   }
   buildQueryPreview();
@@ -322,85 +432,53 @@ function buildQueryPreview() {
   const niche = document.getElementById('niche').value.trim();
   const city = document.getElementById('city').value;
   const country = document.getElementById('country').value;
-
-  if (!niche && !city) {
-    document.getElementById('query-preview').classList.add('hidden');
-    return;
-  }
-
+  if (!niche && !city) { document.getElementById('query-preview').classList.add('hidden'); return; }
   let q = niche;
   if (city) q += ' in ' + city;
   else if (country) q += ' in ' + country;
-
   document.getElementById('query-text').textContent = '"' + q + '"';
   document.getElementById('query-preview').classList.remove('hidden');
 }
 
-function setNiche(val) {
-  document.getElementById('niche').value = val;
-  buildQueryPreview();
-}
+function setNiche(v) { document.getElementById('niche').value = v; buildQueryPreview(); }
 
-function filterNiches(val) {
+function filterNiches(v) {
   const box = document.getElementById('niche-suggestions');
-  if (!val || val.length < 2) { box.classList.add('hidden'); return; }
-  const matches = NICHES.filter(n => n.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
-  if (!matches.length) { box.classList.add('hidden'); return; }
-  box.innerHTML = matches.map(m =>
-    `<div onclick="setNiche('${m}'); document.getElementById('niche-suggestions').classList.add('hidden')"
-      class="px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 cursor-pointer border-b border-slate-700/50 last:border-0">${m}</div>`
-  ).join('');
+  if (!v || v.length < 2) { box.classList.add('hidden'); return; }
+  const m = NICHES.filter(n => n.toLowerCase().includes(v.toLowerCase())).slice(0, 8);
+  if (!m.length) { box.classList.add('hidden'); return; }
+  box.innerHTML = m.map(n => `<div onclick="setNiche('${n}');document.getElementById('niche-suggestions').classList.add('hidden')" class="px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 cursor-pointer border-b border-slate-700/50 last:border-0">${n}</div>`).join('');
   box.classList.remove('hidden');
 }
-
-// close suggestions on outside click
-document.addEventListener('click', e => {
-  if (!e.target.closest('#niche') && !e.target.closest('#niche-suggestions'))
-    document.getElementById('niche-suggestions').classList.add('hidden');
-});
-
-// update preview when city changes
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('city').addEventListener('change', buildQueryPreview);
-  document.getElementById('niche').addEventListener('input', buildQueryPreview);
-});
+document.addEventListener('click', e => { if (!e.target.closest('#niche') && !e.target.closest('#niche-suggestions')) document.getElementById('niche-suggestions').classList.add('hidden'); });
 
 function getQuery() {
-  // Check if manual override is visible
   const custom = document.getElementById('custom-query');
-  if (!document.getElementById('custom-query-row').classList.contains('hidden') && custom.value.trim())
-    return custom.value.trim();
-
+  if (!document.getElementById('custom-row').classList.contains('hidden') && custom.value.trim()) return custom.value.trim();
   const niche = document.getElementById('niche').value.trim();
   const city = document.getElementById('city').value;
   const country = document.getElementById('country').value;
-
   if (!niche) return null;
-  let q = niche;
-  if (city) q += ' in ' + city;
-  else if (country) q += ' in ' + country;
-  return q;
+  return niche + (city ? ' in ' + city : country ? ' in ' + country : '');
 }
-let currentJobId = null;
-let pollTimer = null;
 
-function scoreDot(s) { return s >= 70 ? 'bg-emerald-400' : s >= 40 ? 'bg-amber-400' : 'bg-red-400'; }
-function scoreText(s) { return s >= 70 ? 'text-emerald-600' : s >= 40 ? 'text-amber-600' : 'text-red-600'; }
-function scoreBg(s) { return s >= 70 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : s >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'; }
-
-function addLog(msg) {
-  const log = document.getElementById('live-log');
-  const d = document.createElement('div');
-  d.innerHTML = '<span class="text-slate-500">[' + new Date().toLocaleTimeString() + ']</span> ' + msg;
-  log.appendChild(d);
-  log.scrollTop = log.scrollHeight;
+function setProgress(crawled, total, emailLeads) {
+  const pct = total ? Math.min(99, Math.round((crawled / total) * 100)) : 0;
+  const offset = 213.6 - (213.6 * pct / 100);
+  document.getElementById('progress-circle').style.strokeDashoffset = offset;
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('prog-crawled').textContent = crawled;
+  document.getElementById('prog-emails').textContent = emailLeads;
+  document.getElementById('prog-leads').textContent = emailLeads;
+  document.getElementById('progress-status').textContent = crawled + ' of ' + total + ' sites crawled · ' + emailLeads + ' with email found';
 }
 
 async function startSearch() {
   const query = getQuery();
   const startPage = parseInt(document.getElementById('startPage').value);
   const endPage = parseInt(document.getElementById('endPage').value);
-  if (!query) { alert('Please enter a service niche and select a city.'); return; }
+  if (!query) { alert('Please enter a niche and select a city.'); return; }
 
   const btn = document.getElementById('search-btn');
   btn.disabled = true;
@@ -409,31 +487,26 @@ async function startSearch() {
   ['progress-section','stats-section'].forEach(id => document.getElementById(id).classList.remove('hidden'));
   document.getElementById('download-bar').classList.add('hidden');
   document.getElementById('results-section').innerHTML = '';
-  document.getElementById('live-log').innerHTML = '';
   document.getElementById('progress-title').textContent = '"' + query + '"';
   document.getElementById('progress-sub').textContent = 'Google pages ' + startPage + ' through ' + endPage;
   document.getElementById('stop-btn').classList.remove('hidden');
   document.getElementById('progress-badge').textContent = 'Running';
-  document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
-  document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-yellow-400 pulse-dot';
-  ['stat-leads','stat-emails','stat-noemail'].forEach(id => document.getElementById(id).textContent = '0');
+  document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700';
+  ['stat-leads','stat-emails','stat-fb'].forEach(id => document.getElementById(id).textContent = '0');
   document.getElementById('stat-seo').textContent = '--';
-  document.getElementById('stat-found-sub').textContent = 'of 0 crawled';
-  document.getElementById('progress-bar').style.width = '0%';
-  document.getElementById('progress-count').textContent = '0 audited';
-
-  addLog('Starting: "' + query + '" &mdash; pages ' + startPage + ' to ' + endPage);
+  document.getElementById('stat-crawled-sub').textContent = 'of 0 crawled';
+  setProgress(0, 0, 0);
 
   try {
     const resp = await fetch(API + '/search', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ query, startPage, endPage })
     });
     const data = await resp.json();
     currentJobId = data.jobId;
     pollTimer = setInterval(pollJob, 4000);
   } catch(e) {
-    addLog('ERROR: Cannot connect to backend.');
+    document.getElementById('progress-status').textContent = 'ERROR: Cannot connect to backend.';
     resetBtn();
     document.getElementById('stop-btn').classList.add('hidden');
   }
@@ -445,217 +518,149 @@ async function pollJob() {
     const resp = await fetch(API + '/job/' + currentJobId);
     const job = await resp.json();
 
-    const existing = document.getElementById('live-log').innerText;
-    (job.logs || []).forEach(l => { if (!existing.includes(l.slice(10))) addLog(l.slice(12)); });
-
-    const leads = job.leads || [];
+    const leads = (job.leads || []).filter(l => l.emails && l.emails.length > 0);
     const crawled = job.crawled || 0;
     const total = job.totalFound || 0;
-    const withEmail = leads.filter(l => l.emails && l.emails.length).length;
-    const noEmail = leads.length - withEmail;
+
+    setProgress(crawled, total, leads.length);
 
     document.getElementById('stat-leads').textContent = leads.length;
-    document.getElementById('stat-emails').textContent = withEmail;
-    document.getElementById('stat-noemail').textContent = noEmail;
-    document.getElementById('stat-found-sub').textContent = 'of ' + crawled + ' crawled';
-
-    const pct = total ? Math.min(95, Math.round((crawled / total) * 100)) : 0;
-    document.getElementById('progress-bar').style.width = pct + '%';
-    document.getElementById('progress-count').textContent = crawled + '/' + total + ' crawled &middot; ' + leads.length + ' leads';
+    document.getElementById('stat-emails').textContent = leads.filter(l => l.emailSource !== 'facebook').length;
+    document.getElementById('stat-fb').textContent = leads.filter(l => l.emailSource === 'facebook').length;
+    document.getElementById('stat-crawled-sub').textContent = 'of ' + crawled + ' crawled';
 
     if (leads.length) {
       const validSeo = leads.filter(l => l.seoScore > 0);
-      const avgSeo = validSeo.length ? Math.round(validSeo.reduce((s, l) => s + l.seoScore, 0) / validSeo.length) : 0;
-      if (avgSeo) document.getElementById('stat-seo').textContent = avgSeo + '/100';
-      renderLeads(leads);
+      if (validSeo.length) document.getElementById('stat-seo').textContent = Math.round(validSeo.reduce((s,l) => s+l.seoScore,0)/validSeo.length) + '/100';
     }
 
     if (job.status === 'done' || job.status === 'error') {
       clearInterval(pollTimer); pollTimer = null;
       resetBtn();
       document.getElementById('stop-btn').classList.add('hidden');
-      document.getElementById('progress-bar').style.width = '100%';
       const done = job.status === 'done';
-      document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full ' + (done ? 'bg-emerald-400' : 'bg-red-400');
+      setProgress(total, total, leads.length);
+      document.getElementById('progress-pct').textContent = '100%';
+      document.getElementById('progress-circle').style.strokeDashoffset = 0;
       document.getElementById('progress-badge').textContent = done ? 'Done' : 'Error';
-      document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1 rounded-full ' + (done ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400');
+      document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1.5 rounded-full ' + (done ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700');
+      document.getElementById('progress-status').textContent = done ? leads.length + ' email leads found out of ' + total + ' sites crawled.' : 'Search ended with an error.';
       if (leads.length) {
         document.getElementById('download-bar').classList.remove('hidden');
-        document.getElementById('download-label').textContent = leads.length + ' contactable leads ready — with PDF reports and both pitches';
+        document.getElementById('download-label').textContent = leads.length + ' email leads ready — with PDF reports and pitches';
+        renderLeads(leads);
       }
+    } else if (leads.length) {
+      renderLeads(leads);
     }
   } catch(e) {
-    addLog('Poll warning &mdash; retrying...');
+    document.getElementById('progress-status').textContent = 'Connection hiccup — retrying...';
   }
 }
 
+function scoreDot(s) { return s >= 70 ? 'bg-emerald-400' : s >= 40 ? 'bg-amber-400' : 'bg-red-400'; }
+function scoreText(s) { return s >= 70 ? 'text-emerald-600' : s >= 40 ? 'text-amber-600' : 'text-red-600'; }
+
 function switchTab(idx, tab) {
   ['seo','design'].forEach(t => {
-    document.getElementById('tab-' + t + '-' + idx).classList.toggle('active', t === tab);
-    document.getElementById('panel-' + t + '-' + idx).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab-'+t+'-'+idx).classList.toggle('active', t===tab);
+    document.getElementById('panel-'+t+'-'+idx).classList.toggle('hidden', t!==tab);
   });
 }
 
 function renderLeads(leads) {
   document.getElementById('results-section').innerHTML = leads.map((l, idx) => {
-    const issuesHtml = (l.issueLabels || l.issues?.map(i=>i.label||i) || []).slice(0, 4).map(i =>
-      `<span class="itag bg-red-50 text-red-600 border border-red-100">
-        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        ${i}</span>`
+    const issuesHtml = (l.issueLabels||[]).slice(0,4).map(i =>
+      `<span class="itag bg-red-50 text-red-600 border border-red-100"><svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>${i}</span>`
     ).join('');
-    const issueCount = (l.issueLabels || l.issues || []).length;
-    const extra = issueCount > 4 ? `<span class="itag bg-slate-100 text-slate-500">+${issueCount - 4} more</span>` : '';
-    const emailLinks = l.emails.slice(0, 2).map(e => `<a href="mailto:${e}" class="text-blue-600 hover:underline block truncate">${e}</a>`).join('');
+    const extra = (l.issueLabels||[]).length > 4 ? `<span class="itag bg-slate-100 text-slate-500">+${l.issueLabels.length-4} more</span>` : '';
+    const emailBadge = l.emailSource === 'facebook'
+      ? '<span class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">&#10003; Email via Facebook</span>'
+      : '<span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">&#10003; Has Email</span>';
 
     return `<div class="bg-white rounded-2xl border border-slate-100 shadow-sm card-hover fade-in overflow-hidden">
-
-      <!-- Header -->
       <div class="px-5 py-4 border-b border-slate-50 flex items-start justify-between gap-4">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 mb-1.5 flex-wrap">
             <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">Page ${l.googlePage}</span>
-            ${l.emails && l.emails.length
-              ? (l.emailSource === 'facebook'
-                  ? '<span class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">&#10003; Email via Facebook</span>'
-                  : '<span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">&#10003; Has Email</span>')
-              : '<span class="text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">No Email</span>'}
+            ${emailBadge}
             ${!l.hasSSL ? '<span class="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">No SSL</span>' : ''}
-            ${l.seoScore < 50 ? '<span class="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">Weak SEO</span>' : ''}
+            ${l.seoScore > 0 && l.seoScore < 50 ? '<span class="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">Weak SEO</span>' : ''}
           </div>
           <div class="font-bold text-slate-800 text-sm leading-snug mb-1">${l.title}</div>
           <a href="${l.url}" target="_blank" class="text-xs text-blue-500 hover:underline block truncate max-w-md">${l.url}</a>
         </div>
         <div class="flex flex-col gap-2 flex-shrink-0 items-end">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${scoreDot(l.mobileScore)}"></span>
-            <span class="text-xs font-semibold text-slate-500">Mobile <span class="${scoreText(l.mobileScore)} font-bold">${l.mobileScore}/100</span></span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${scoreDot(l.seoScore)}"></span>
-            <span class="text-xs font-semibold text-slate-500">SEO <span class="${scoreText(l.seoScore)} font-bold">${l.seoScore}/100</span></span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${scoreDot(l.accessibilityScore)}"></span>
-            <span class="text-xs font-semibold text-slate-500">A11y <span class="${scoreText(l.accessibilityScore)} font-bold">${l.accessibilityScore}/100</span></span>
-          </div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full ${scoreDot(l.mobileScore)}"></span><span class="text-xs font-semibold text-slate-500">Mobile <span class="${scoreText(l.mobileScore)} font-bold">${l.mobileScore > 0 ? l.mobileScore+'/100' : 'N/A'}</span></span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full ${scoreDot(l.seoScore)}"></span><span class="text-xs font-semibold text-slate-500">SEO <span class="${scoreText(l.seoScore)} font-bold">${l.seoScore > 0 ? l.seoScore+'/100' : 'N/A'}</span></span></div>
         </div>
       </div>
 
-      <!-- Metrics -->
-      <div class="px-5 py-3 grid grid-cols-2 md:grid-cols-5 gap-3 border-b border-slate-50 bg-slate-50/50 text-xs">
-        <div><div class="text-slate-400 mb-0.5">TTI</div><div class="font-semibold text-slate-700">${l.loadTime || l.tti || 'N/A'}</div></div>
-        <div><div class="text-slate-400 mb-0.5">LCP</div><div class="font-semibold text-slate-700">${l.lcp}</div></div>
-        <div><div class="text-slate-400 mb-0.5">CLS</div><div class="font-semibold text-slate-700">${l.cls}</div></div>
-        <div><div class="text-slate-400 mb-0.5">Email</div><div class="font-semibold">${emailLinks}</div></div>
+      <div class="px-5 py-3 grid grid-cols-2 md:grid-cols-4 gap-3 border-b border-slate-50 bg-slate-50/50 text-xs">
+        <div><div class="text-slate-400 mb-0.5">Load time</div><div class="font-semibold text-slate-700">${l.loadTime||'N/A'}</div></div>
+        <div><div class="text-slate-400 mb-0.5">LCP</div><div class="font-semibold text-slate-700">${l.lcp||'N/A'}</div></div>
+        <div><div class="text-slate-400 mb-0.5">Email</div><div class="font-semibold">${l.emails.slice(0,2).map(e=>`<a href="mailto:${e}" class="text-blue-600 hover:underline block truncate">${e}</a>`).join('')}</div></div>
         <div><div class="text-slate-400 mb-0.5">Phone</div><div class="font-semibold text-slate-700">${l.phones.length ? l.phones[0] : '<span class="text-slate-300">—</span>'}</div></div>
-        ${l.facebookUrl ? `<div class="col-span-2 md:col-span-1"><div class="text-slate-400 mb-0.5">Facebook</div><a href="${l.facebookUrl}" target="_blank" class="text-xs font-semibold text-blue-500 hover:underline truncate block">${l.facebookUrl.replace('https://','').replace('www.facebook.com/','fb/')}</a></div>` : ''}
+        ${l.facebookUrl ? `<div class="col-span-2"><div class="text-slate-400 mb-0.5">Facebook</div><a href="${l.facebookUrl}" target="_blank" class="text-xs font-semibold text-blue-500 hover:underline truncate block">${l.facebookUrl.replace('https://','').replace('www.facebook.com/','fb.com/')}</a></div>` : ''}
       </div>
 
-      <!-- Issues -->
       ${issuesHtml ? `<div class="px-5 py-3 border-b border-slate-50 flex flex-wrap gap-1.5">${issuesHtml}${extra}</div>` : ''}
 
-      <!-- Pitch tabs -->
-      <div class="px-5 pt-4 pb-2 border-b border-slate-50">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-            <button id="tab-seo-${idx}" class="tab-btn active" onclick="switchTab(${idx},'seo')">
-              <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-              SEO Pitch
-            </button>
-            <button id="tab-design-${idx}" class="tab-btn" onclick="switchTab(${idx},'design')">
-              <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
-              Design Pitch
-            </button>
-          </div>
-          <span class="text-xs text-slate-400 italic">Send pitch first &rarr; attach PDF report</span>
+      <div class="px-5 py-4 border-b border-slate-50">
+        <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1 mb-3 w-fit">
+          <button id="tab-seo-${idx}" class="tab-btn active" onclick="switchTab(${idx},'seo')">SEO Pitch</button>
+          <button id="tab-design-${idx}" class="tab-btn" onclick="switchTab(${idx},'design')">Design Pitch</button>
         </div>
-
         <div id="panel-seo-${idx}">
-          <div class="flex items-center gap-1.5 mb-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
-            <span class="text-xs font-bold text-violet-700">SEO Pitch &mdash; attach the PDF audit report to this email</span>
-          </div>
-          <p class="text-sm text-slate-600 leading-relaxed" id="seo-pitch-${idx}">${l.seoPitch || 'Generating...'}</p>
+          <div class="text-xs font-bold text-violet-700 mb-1">SEO Pitch &mdash; attach the PDF audit report to this email</div>
+          <p class="text-sm text-slate-600 leading-relaxed" id="seo-pitch-${idx}">${l.seoPitch||'Generating...'}</p>
         </div>
-
         <div id="panel-design-${idx}" class="hidden">
-          <div class="flex items-center gap-1.5 mb-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            <span class="text-xs font-bold text-blue-700">Design Pitch &mdash; send separately, offer the free redesign concept</span>
-          </div>
-          <p class="text-sm text-slate-600 leading-relaxed" id="design-pitch-${idx}">${l.designPitch || 'Generating...'}</p>
+          <div class="text-xs font-bold text-blue-700 mb-1">Design Pitch &mdash; offer free redesign concept</div>
+          <p class="text-sm text-slate-600 leading-relaxed" id="design-pitch-${idx}">${l.designPitch||'Generating...'}</p>
         </div>
       </div>
 
-      <!-- Actions -->
       <div class="px-5 py-3 bg-slate-50 flex items-center gap-2 flex-wrap">
-        <a href="${API}/job/${currentJobId}/lead/${idx}/pdf" target="_blank"
-          class="flex items-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-lg transition shadow-sm">
+        <a href="${API}/job/${currentJobId}/lead/${idx}/pdf" target="_blank" class="flex items-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-lg transition shadow-sm">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-          Download PDF Report
+          PDF Report
         </a>
-        <button onclick="copyText('seo-pitch-${idx}')" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          Copy SEO pitch
-        </button>
-        <button onclick="copyText('design-pitch-${idx}')" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          Copy design pitch
-        </button>
-        <button onclick="copyText('${l.emails[0]||''}')" class="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition">
+        <button onclick="copyText('seo-pitch-${idx}')" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">Copy SEO pitch</button>
+        <button onclick="copyText('design-pitch-${idx}')" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition">Copy design pitch</button>
+        <button onclick="copyText('${l.emails[0]}')" class="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           Copy email
         </button>
-        ${l.emails && l.emails.length
-          ? `<a href="${l.url}" target="_blank" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 px-2 py-1.5 transition">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-              View site
-            </a>`
-          : `<button onclick="copyAndOpen('seo-pitch-${idx}', '${l.url}')" class="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              Copy pitch &amp; open contact page
-            </button>`
-        }
+        <a href="${l.url}" target="_blank" class="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 transition">View site</a>
       </div>
     </div>`;
   }).join('');
 }
 
-function copyAndOpen(pitchId, siteUrl) {
-  const text = document.getElementById(pitchId)?.textContent;
-  if (text) {
-    navigator.clipboard.writeText(text).then(() => {
-      toast('Pitch copied — paste it into their contact form');
-      // Open contact page directly, fallback to homepage
-      const contactUrl = siteUrl.replace(/\/?$/, '/contact');
-      window.open(contactUrl, '_blank');
-    });
-  }
-}
-
 function copyText(idOrText) {
   const el = document.getElementById(idOrText);
-  const text = el ? el.textContent : idOrText;
-  if (!text) { toast('Nothing to copy'); return; }
-  navigator.clipboard.writeText(text).then(() => toast('Copied!'));
+  const t = el ? el.textContent : idOrText;
+  if (t) navigator.clipboard.writeText(t).then(() => toast('Copied!'));
 }
 
-function downloadCSV() {
-  if (!currentJobId) return;
-  window.open(API + '/job/' + currentJobId + '/csv', '_blank');
+function copyAndOpen(pitchId, siteUrl) {
+  const t = document.getElementById(pitchId)?.textContent;
+  if (t) navigator.clipboard.writeText(t).then(() => { toast('Pitch copied — paste into contact form'); window.open(siteUrl.replace(/\/?$/,'/contact'), '_blank'); });
 }
+
+function downloadCSV() { if (currentJobId) window.open(API+'/job/'+currentJobId+'/csv','_blank'); }
 
 function stopJob() {
   clearInterval(pollTimer); pollTimer = null;
   document.getElementById('stop-btn').classList.add('hidden');
-  document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
   document.getElementById('progress-badge').textContent = 'Stopped';
-  document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1 rounded-full bg-slate-500/20 text-slate-400';
-  addLog('Stopped &mdash; ' + document.getElementById('stat-leads').textContent + ' leads saved');
+  document.getElementById('progress-badge').className = 'text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-600';
+  document.getElementById('progress-status').textContent = 'Stopped — ' + document.getElementById('stat-leads').textContent + ' leads saved';
   resetBtn();
   if (document.getElementById('stat-leads').textContent !== '0') {
     document.getElementById('download-bar').classList.remove('hidden');
-    document.getElementById('download-label').textContent = document.getElementById('stat-leads').textContent + ' contactable leads ready to download';
+    document.getElementById('download-label').textContent = document.getElementById('stat-leads').textContent + ' email leads ready to download';
   }
 }
 
