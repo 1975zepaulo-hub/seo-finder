@@ -330,8 +330,7 @@ EMAIL 1 — SEO Pitch (attach the PDF audit report to this):
   [variant keyword] [city] | ~XXX
   [near me variant] | ~XXX
   (use realistic numbers based on city size and niche — a Lagos plumber will have different volume than a Dubai dentist)
-- Say the full audit PDF is attached with every issue found
-- CTA: soft ask — "Would it be worth a quick chat about fixing this?"
+- For the CTA: do NOT just say "check the PDF". Instead, tease ONE specific surprising or alarming finding from the audit that you haven't mentioned in the email body yet — something that will make them curious enough to open it. Frame it like: "I've flagged [X] other issues in the full report — one of them in particular explains exactly why [competitor type] on page 1 is pulling your customers. It's attached." OR "The report also shows something most business owners don't realise is silently hurting their ranking — page 2 of the PDF." The goal: make opening the PDF feel like it has the answer to their problem, not just a list of complaints.
 - Tone: direct, human, like a freelancer who spotted a real problem — not salesy
 
 EMAIL 2 — Web Design Pitch:
