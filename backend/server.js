@@ -819,32 +819,68 @@ async function runJob(jobId, query, startPage, endPage, aiKey, aiProvider, aiMod
 // ── Routes ───────────────────────────────────────────────────────────────────
 // Verify a user-supplied AI key with a minimal test call
 app.post("/api/verify-key", async (req, res) => {
-  const { provider, key } = req.body;
+  const { provider, key, model } = req.body;
   if (!key) return res.status(400).json({ ok: false, error: "No key provided" });
-  try {
-    if (provider === "openai") {
-      await axios.post("https://api.openai.com/v1/chat/completions", {
-        model: "gpt-4o-mini", max_tokens: 5,
-        messages: [{ role: "user", content: "hi" }],
-      }, { headers: { Authorization: `Bearer ${key}` }, timeout: 15000 });
-    } else if (provider === "openrouter") {
-      await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-        model: "anthropic/claude-haiku-4-5", max_tokens: 5,
-        messages: [{ role: "user", content: "hi" }],
-      }, { headers: { Authorization: `Bearer ${key}`, "HTTP-Referer": "https://zaram.app", "X-Title": "Zaram SEO PitchReady" }, timeout: 15000 });
-    } else {
-      // Anthropic
-      const client = new Anthropic({ apiKey: key });
-      await client.messages.create({
-        model: "claude-haiku-4-5-20251001", max_tokens: 5,
-        messages: [{ role: "user", content: "hi" }],
-      });
+
+  // Use the safest/most universally available model per provider for the test
+  const testModels = {
+    openai: ["gpt-4o-mini", "gpt-3.5-turbo"],
+    openrouter: ["openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"],
+    anthropic: ["claude-haiku-4-5-20251001", "claude-3-haiku-20240307"],
+  };
+  const modelsToTry = testModels[provider] || testModels.anthropic;
+
+  for (const testModel of modelsToTry) {
+    try {
+      if (provider === "openai") {
+        const resp = await axios.post("https://api.openai.com/v1/chat/completions", {
+          model: testModel, max_tokens: 5,
+          messages: [{ role: "user", content: "hi" }],
+        }, {
+          headers: { Authorization: `Bearer ${key.trim()}`, "Content-Type": "application/json" },
+          timeout: 25000,
+        });
+        // Success — also verify the user's chosen model exists by listing models
+        return res.json({ ok: true, model: testModel });
+      } else if (provider === "openrouter") {
+        await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+          model: testModel, max_tokens: 5,
+          messages: [{ role: "user", content: "hi" }],
+        }, {
+          headers: {
+            Authorization: `Bearer ${key.trim()}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://zaram.app",
+            "X-Title": "Zaram SEO PitchReady",
+          },
+          timeout: 25000,
+        });
+        return res.json({ ok: true, model: testModel });
+      } else {
+        const client = new Anthropic({ apiKey: key.trim() });
+        await client.messages.create({
+          model: testModel, max_tokens: 5,
+          messages: [{ role: "user", content: "hi" }],
+        });
+        return res.json({ ok: true, model: testModel });
+      }
+    } catch (e) {
+      const status = e.response?.status;
+      const msg = e.response?.data?.error?.message || e.message;
+      console.error(`verify-key [${provider}/${testModel}] ${status}: ${msg}`);
+      // 401 = bad key — no point trying other models
+      if (status === 401 || status === 403) {
+        return res.json({ ok: false, error: `Invalid API key — ${msg}` });
+      }
+      // 404 = model not found — try next model
+      if (status === 404) continue;
+      // Any other error on last model
+      if (testModel === modelsToTry[modelsToTry.length - 1]) {
+        return res.json({ ok: false, error: msg || "Could not reach AI provider — check your connection" });
+      }
     }
-    res.json({ ok: true });
-  } catch (e) {
-    const msg = e.response?.data?.error?.message || e.message;
-    res.json({ ok: false, error: msg });
   }
+  res.json({ ok: false, error: "All test models failed — key may have restricted access" });
 });
 
 app.post("/api/search", (req, res) => {
